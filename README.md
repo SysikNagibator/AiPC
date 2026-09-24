@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/AiPC_Poster.png" alt="AiPC от Sysik">
+  <img src="https://raw.githubusercontent.com/S1sTeam/AiPC/main/assets/AiPC_Poster.png" alt="AiPC от Sysik">
 </p>
 
 <h1 align="center">AiPC от Sysik</h1>
