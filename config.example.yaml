@@ -1,0 +1,18 @@
+mode: ask
+server:
+  host: 127.0.0.1
+  port: 18789
+screen:
+  max_width: 1280
+browser:
+  cdp_port: 9222
+ssh_hosts: {}
+web_search:
+  provider: duckduckgo
+safety:
+  deny_cmd:
+    - "format "
+    - "rm -rf /"
+  deny_paths:
+    - "**/Cookies/**"
+    - "**/Login Data**"

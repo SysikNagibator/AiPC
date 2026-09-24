@@ -1,0 +1,13 @@
+[project]
+name = "aipc-sysik"
+version = "1.0.0"
+description = "AiPC от Sysik — полный доступ агента к ПК (MCP + CLI)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["rich>=13", "pyyaml>=6", "mcp>=1.0"]
+
+[project.scripts]
+aipc = "aipc.__main__:main"
+
+[build-system]
+requires = ["setuptools"]

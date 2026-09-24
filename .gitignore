@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+dist/
+build/
+*.spec
+*.egg-info/
+~/.aipc/
+aipc.log
