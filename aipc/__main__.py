@@ -40,6 +40,7 @@ def _first_run_setup() -> None:
 
 
 def cmd_menu() -> int:
+    from . import __version__ as _ver
     from .menu import MenuItem, run_menu
     from . import actions as A
     from . import setup_wizard as W
@@ -56,7 +57,7 @@ def cmd_menu() -> int:
         pass
     while True:
         idx = run_menu(
-            "AiPC от Sysik",
+            f"AiPC от Sysik v{_ver}",
             [
                 MenuItem("Запустить AiPC-Core", "run"),
                 MenuItem("Остановить", "stop"),
@@ -133,6 +134,15 @@ def main(argv: list[str] | None = None) -> int:
     if not argv:
         return cmd_menu()
     cmd = argv[0].lower()
+    if cmd == "-m":
+        # Совместимость: старые запуски вида `aipc.exe -m aipc mcp` (баг 1.0.0).
+        # Такого больше не генерируем, но чужой вызов молча чиним вместо ошибки.
+        argv = argv[1:]
+        if argv and argv[0].lower() == "aipc":
+            argv = argv[1:]
+        if not argv:
+            return cmd_menu()
+        cmd = argv[0].lower()
     if cmd == "mcp":
         from .server import main as server_main
 
