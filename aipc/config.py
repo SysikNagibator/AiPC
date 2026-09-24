@@ -9,6 +9,8 @@ try:
 except ImportError:
     yaml = None
 
+SAFETY_VERSION = 3
+
 DEFAULTS = {
     "mode": "ask",  # ask | auto | read-only
     "server": {"host": "127.0.0.1", "port": 18789},
@@ -17,8 +19,60 @@ DEFAULTS = {
     "ssh_hosts": {},
     "web_search": {"provider": "duckduckgo"},
     "safety": {
-        "deny_cmd": ["format ", "rm -rf /", ":(){:|:&};:"],
-        "deny_paths": ["**/Cookies/**", "**/Login Data**", "C:\\Windows\\System32\\*"],
+        "deny_cmd": [
+            "format ",
+            "rm -rf /",
+            ":(){:|:&};:",
+            "mimikatz",
+            "sekurlsa",
+            "ntdsutil",
+            "vssadmin delete",
+            "vssadmin resize",
+            "bcdedit",
+            "cipher /w",
+            "wevtutil cl ",
+            "wevtutil clear-log",
+            "certutil -decode",
+            "certutil -urlcache",
+            "bitsadmin /transfer",
+            "powershell -e ",
+            "powershell -enc ",
+            "powershell --encode",
+            " -encodedcommand ",
+            "reg delete hklm",
+            "reg add hklm",
+            "rd /s /q c:\\windows",
+            "rd /s /q c:/windows",
+            "del /f /s /q c:\\windows",
+            "takeown /f c:\\windows",
+            "icacls c:\\windows",
+            "net user ",
+            "net localgroup administrators",
+            "schtasks /create",
+            "sc create",
+            "wmic shadowcopy delete",
+        ],
+        "deny_paths": [
+            "**/Cookies/**",
+            "**/Login Data**",
+            "**/id_rsa",
+            "**/id_ed25519",
+            "**/*.pem",
+            "**/*.pfx",
+            "**/*.p12",
+            "**/*.kdbx",
+            "**/NTUSER.DAT*",
+            "**/SAM*",
+            "**/SECURITY*",
+            # Те же имена без пути — ловят относительные пути (vault.pfx, id_rsa)
+            "id_rsa",
+            "id_ed25519",
+            "*.pem",
+            "*.pfx",
+            "*.p12",
+            "*.kdbx",
+            "C:\\Windows\\System32\\*",
+        ],
     },
 }
 
@@ -47,7 +101,32 @@ def load_config() -> dict:
                     cfg[k] = v
         except Exception:
             pass
+    _upgrade_safety(cfg, path)
     return cfg
+
+
+def _upgrade_safety(cfg: dict, path) -> None:
+    """Дотянуть deny-листы старых установок до актуальных (свои добавления не трем)."""
+    try:
+        safety = cfg.get("safety") or {}
+        if safety.get("version") == SAFETY_VERSION:
+            return
+        def_safety = DEFAULTS["safety"]
+        for key in ("deny_cmd", "deny_paths"):
+            merged = list(def_safety.get(key, []))
+            for item in safety.get(key, []) or []:
+                if item not in merged:
+                    merged.append(item)
+            safety[key] = merged
+        safety["version"] = SAFETY_VERSION
+        cfg["safety"] = safety
+        if yaml is not None:
+            try:
+                path.write_text(yaml.safe_dump(cfg, allow_unicode=True, sort_keys=False), encoding="utf-8")
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 
 def save_config(cfg: dict) -> Path:

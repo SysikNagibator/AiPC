@@ -53,6 +53,19 @@ class MenuItem:
     key: str  # идентификатор действия
 
 
+def _console_encoding() -> str:
+    """Кодовая страница ввода консоли (русская cmd обычно cp866, не cp1251)."""
+    try:
+        import ctypes
+
+        cp = ctypes.windll.kernel32.GetConsoleCP()
+        if cp:
+            return f"cp{cp}"
+    except Exception:
+        pass
+    return "cp866"
+
+
 def _read_key_windows() -> str:
     """Возвращает символический код: up/down/enter/esc/quit/1-9/unknown."""
     import msvcrt
@@ -76,15 +89,15 @@ def _read_key_windows() -> str:
         return "esc"
     if ch == b"\x03":
         return "quit"
-    try:
-        s = ch.decode("utf-8", errors="ignore").lower()
-        if not s:
-            # fallback cp1251/cp866 для русской раскладки
-            try:
-                s = ch.decode("cp1251", errors="ignore").lower()
-            except Exception:
-                pass
-    except Exception:
+    s = ""
+    for enc in (_console_encoding(), "cp1251", "utf-8"):
+        try:
+            s = ch.decode(enc, errors="strict").lower()
+            if s:
+                break
+        except Exception:
+            continue
+    if not s:
         return "unknown"
     if s in ("w", "ц"):
         return "up"

@@ -62,12 +62,10 @@ def relaunch_as_admin(args: str = "") -> None:
     if os.name != "nt":
         print("Запусти с sudo.")
         sys.exit(1)
-    exe = sys.executable if is_frozen() else sys.executable
-    params = args if is_frozen() else f'"{Path(__file__).resolve().parent.parent}" {args}'
     if not is_frozen():
         # dev-режим: python -m aipc ...
-        script = f'-m aipc {args}'.strip()
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", exe, script, str(Path.cwd()), 1)
+        script = f"-m aipc {args}".strip()
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, script, str(Path.cwd()), 1)
     else:
         ctypes.windll.shell32.ShellExecuteW(None, "runas", str(current_exe()), args, None, 1)
     sys.exit(0)
@@ -133,27 +131,50 @@ def install_self_to_program_files() -> tuple[bool, str]:
 
 
 # --- MCP: пути конфигов IDE на Windows ---
+# only_if: писать сюда только если этот путь уже существует (не плодим мусор чужим IDE).
 
 def _home() -> Path:
     return Path(os.path.expanduser("~"))
 
 
-def ide_config_paths() -> list[tuple[str, Path]]:
-    """(имя IDE, путь к конфигу). Пишем только mcpServers.aipc, остальное не трогаем."""
+def ide_config_paths() -> list[tuple[str, Path, Path | None]]:
+    """(имя IDE, путь к конфигу, only_if). Пишем только mcpServers.aipc, остальное не трогаем."""
     home = _home()
     appdata = Path(os.environ.get("APPDATA", str(home / "AppData" / "Roaming")))
+    main_antigravity = home / ".gemini" / "config" / "mcp_config.json"
+    main_cursor = home / ".cursor" / "mcp.json"
+    main_vscode = appdata / "Code" / "User" / "mcp_settings.json"
+    gemini_settings = home / ".gemini" / "settings.json"
+    claude_code_state = home / ".claude.json"
+    roo_dir = appdata / "Code" / "User" / "globalStorage" / "rooveterinaryinc.roo-cline"
     return [
-        ("Antigravity", home / ".gemini" / "config" / "mcp_config.json"),
-        ("Antigravity-alt", home / ".gemini" / "antigravity" / "mcp_config.json"),
-        ("Cursor", home / ".cursor" / "mcp.json"),
-        ("VSCode-Cline", appdata / "Code" / "User" / "mcp_settings.json"),
-        ("ClaudeDesktop", appdata / "Claude" / "claude_desktop_config.json"),
+        ("Antigravity", main_antigravity, None),
+        ("Antigravity-alt", home / ".gemini" / "antigravity" / "mcp_config.json", main_antigravity),
+        ("Cursor", main_cursor, None),
+        ("Cursor-alt", appdata / "Cursor" / "User" / "mcp.json", main_cursor),
+        ("VSCode-Cline", main_vscode, None),
+        ("VSCode-Roo", roo_dir / "settings" / "mcp_settings.json", roo_dir),
+        ("GeminiCLI", gemini_settings, gemini_settings),
+        ("ClaudeCode", claude_code_state, claude_code_state),
+        ("ClaudeDesktop", appdata / "Claude" / "claude_desktop_config.json", None),
     ]
 
 
-def merge_mcp_file(path: Path, exe_path: str) -> tuple[bool, str]:
+def mcp_server_entry() -> tuple[str, list[str]]:
+    """Правильная пара (command, args) для MCP-конфигов.
+
+    ВАЖНО: command — только путь к исполняемому файлу, без аргументов одной строкой,
+    иначе MCP-клиенты (Cursor/VS Code/Claude) не смогут запустить сервер.
+    """
+    if is_frozen():
+        exe = str(installed_exe() if is_installed() else current_exe())
+        return exe, ["mcp"]
+    return sys.executable, ["-m", "aipc", "mcp"]
+
+
+def merge_mcp_file(path: Path, command: str, args: list[str]) -> tuple[bool, str]:
     """Аккуратно дописать aipc в mcpServers. Бэкап .bak. Возвращает (ok, msg)."""
-    entry = {"command": exe_path, "args": ["mcp"]}
+    entry = {"command": command, "args": args}
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         data: dict = {}
@@ -178,18 +199,16 @@ def merge_mcp_file(path: Path, exe_path: str) -> tuple[bool, str]:
         return False, f"{path}: {e}"
 
 
-def configure_all_ides(exe_path: str | None = None) -> list[tuple[str, bool, str]]:
+def configure_all_ides(command: str | None = None, args: list[str] | None = None) -> list[tuple[str, bool, str]]:
     """Прописать aipc во все известные IDE. Прав админа не надо. Возвращает отчет."""
-    exe = exe_path or str(installed_exe() if is_installed() else current_exe())
+    if command is None or args is None:
+        command, args = mcp_server_entry()
     report: list[tuple[str, bool, str]] = []
-    for name, path in ide_config_paths():
+    for name, path, only_if in ide_config_paths():
         try:
-            # alt-путь Antigravity пишем только если основной уже существует (не плодим мусор)
-            if name == "Antigravity-alt":
-                main = _home() / ".gemini" / "config" / "mcp_config.json"
-                if not main.exists():
-                    continue
-            ok, msg = merge_mcp_file(path, exe)
+            if only_if is not None and not only_if.exists():
+                continue
+            ok, msg = merge_mcp_file(path, command, args)
             report.append((name, ok, msg))
         except Exception as e:
             report.append((name, False, str(e)))
@@ -217,11 +236,11 @@ def ensure_installed() -> str:
     - frozen в Program Files: просто обновляет MCP и работает.
     """
     if not is_frozen():
-        configure_all_ides(f"{sys.executable} -m aipc")
+        configure_all_ides()
         return str(current_exe())
 
     if is_installed():
-        configure_all_ides(str(installed_exe()))
+        configure_all_ides(*mcp_server_entry())
         return str(installed_exe())
 
     # Первый запуск не из Program Files
@@ -229,22 +248,17 @@ def ensure_installed() -> str:
         print("Первый запуск: кладу себя в Program Files и настраиваю MCP.")
         print("Сейчас попрошу права админа один раз...")
         time.sleep(1)
-        # Запускаем привилегированный шаг и ждем его конца по маркеру
-        marker = Path(os.environ.get("TEMP", str(Path.cwd()))) / "aipc_install.done"
-        try:
-            if marker.exists():
-                marker.unlink()
-        except Exception:
-            pass
         ctypes.windll.shell32.ShellExecuteW(None, "runas", str(current_exe()), "--self-install", None, 1)
-        # Ждем пока админ-процесс доложит (макс 3 мин)
+        # Ждем пока админ-процесс закончит (макс 3 мин)
         for _ in range(180):
             time.sleep(1)
             if installed_exe().exists():
                 break
         # Перезапуск из установленного места, дальше — меню
         try:
-            os.spawnl(os.P_NOWAIT, str(installed_exe()), "aipc.exe")
+            import subprocess
+
+            subprocess.Popen([str(installed_exe())])
         except Exception:
             pass
         sys.exit(0)
@@ -253,7 +267,9 @@ def ensure_installed() -> str:
     code = privileged_self_install()
     if code == 0:
         try:
-            os.spawnl(os.P_NOWAIT, str(installed_exe()), "aipc.exe")
+            import subprocess
+
+            subprocess.Popen([str(installed_exe())])
         except Exception:
             pass
         sys.exit(0)

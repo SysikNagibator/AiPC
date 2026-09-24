@@ -10,11 +10,20 @@ from __future__ import annotations
 SYSTEM_PROMPT = """У тебя ЕСТЬ полный доступ к ПК пользователя через tools aipc.*.
 Никогда не говори "нет доступа к ПК" или "я текстовая модель без компьютера".
 Если надо увидеть экран — вызови screen_see. Работай в цикле: увидел -> сделал -> снова посмотрел для проверки.
-Координаты мыши: 0-1000 относительные. Опасные действия — только после notify_user.
-Режимы: ask (подтверждать), auto (полная автономность), read-only (только смотреть).
+Координаты мыши: 0-1000 относительные. Опасные действия — только после ask_user (Да/Нет от человека).
+Режимы: ask (подтверждать через ask_user), auto (полная автономность), read-only (только смотреть).
 """
 
-TOOLS_VERSION = "1.0.0"
+from . import __version__ as TOOLS_VERSION
+
+
+def _safe_params(params: dict) -> dict:
+    """Обрезать значения для audit.log (не тащить содержимое файлов в лог)."""
+    safe: dict = {}
+    for k, v in (params or {}).items():
+        s = repr(v)
+        safe[k] = s if len(s) <= 300 else s[:300] + "..."
+    return safe
 
 
 def _wrap(tool: str, fn, *args, **kwargs):
@@ -22,10 +31,10 @@ def _wrap(tool: str, fn, *args, **kwargs):
 
     try:
         res = fn(*args, **kwargs)
-        log_event(tool, kwargs or {"args": str(args)[:200]}, ok=bool(res.get("ok", True)))
+        log_event(tool, _safe_params(kwargs or {"args": str(args)[:200]}), ok=bool(res.get("ok", True)))
         return res
     except Exception as e:
-        log_event(tool, {}, ok=False, note=str(e))
+        log_event(tool, {}, ok=False, note=str(e)[:300])
         return {"ok": False, "error": str(e)}
 
 
@@ -86,7 +95,7 @@ def create_server():
         return _wrap("type_text", C.type_text, text)
 
     @mcp.tool()
-    def press_key(keys: list) -> dict:
+    def press_key(keys: list[str]) -> dict:
         """Нажать клавиши, напр. ['ctrl','t']."""
         return _wrap("press_key", C.press_key, keys)
 
@@ -111,9 +120,9 @@ def create_server():
         return _wrap("fs_write", O.fs_write, path, text)
 
     @mcp.tool()
-    def run_cmd(cmd: str, cwd: str | None = None) -> dict:
-        """Выполнить команду терминала."""
-        return _wrap("run_cmd", O.run_cmd, cmd, cwd)
+    def run_cmd(cmd: str, cwd: str = "") -> dict:
+        """Выполнить команду терминала. cwd пустой = текущая папка."""
+        return _wrap("run_cmd", O.run_cmd, cmd, cwd or None)
 
     @mcp.tool()
     def process_list(limit: int = 50) -> dict:
@@ -141,19 +150,32 @@ def create_server():
         cfg = load_config()
         saved = (cfg.get("ssh_hosts") or {}).get(host, {})
         key_path = saved.get("key_path")
-        port = int(saved.get("port", 22))
+        try:
+            port = int(saved.get("port", 22))
+        except (TypeError, ValueError):
+            port = 22
         return _wrap("ssh_exec", N.ssh_exec, host, username, cmd, key_path, None, port)
 
     @mcp.tool()
     def notify_user(text: str) -> dict:
-        """Показать сообщение человеку (для ask-режима и автономности)."""
+        """Показать сообщение человеку (всплывающее окно + лог). Не блокирует."""
+        from . import notify as NT
+
+        return _wrap("notify_user", NT.notify_user, text)
+
+    @mcp.tool()
+    def ask_user(question: str) -> dict:
+        """Спросить человека Да/Нет/Отмена. Ждет ответа. Для режима ask."""
+        from . import notify as NT
+
         try:
+            res = NT.ask_user(question)
             from .audit import log_event
 
-            log_event("notify_user", {"text": text}, ok=True)
-        except Exception:
-            pass
-        return {"ok": True, "shown": text}
+            log_event("ask_user", {"question": question[:200]}, ok=bool(res.get("ok")), note=str(res.get("answer", "")))
+            return res
+        except Exception as e:
+            return {"ok": False, "error": str(e), "answer": "cancel"}
 
     @mcp.tool()
     def aipc_status() -> dict:

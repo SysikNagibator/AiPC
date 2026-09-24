@@ -12,7 +12,7 @@ import sys
 
 
 def _first_run_setup() -> None:
-    """Авто-настройка при запуске exe: конфиг + MCP-пресет. Без вопросов."""
+    """Авто-настройка при запуске exe: конфиг + эталонные пресеты рядом. Без вопросов."""
     try:
         from .config import ensure_default_config
 
@@ -23,26 +23,16 @@ def _first_run_setup() -> None:
         import json
         from pathlib import Path
 
-        # exe может лежать в Program Files или рядом с проектом
-        import sys as _sys
+        from .installer import mcp_server_entry
 
-        exe = _sys.executable if getattr(_sys, "frozen", False) else r"C:\Program Files\AiPC\aipc.exe"
-        presets = {
-            "antigravity.json": "antigravity",
-            "cursor.json": "cursor",
-            "vscode.json": "vscode",
-            "claude_desktop.json": "claude",
-        }
+        command, args = mcp_server_entry()
+        preset = {"mcpServers": {"aipc": {"command": command, "args": args}}}
         base = Path(__file__).resolve().parent.parent / "mcp_presets"
-        # в frozen-режиме пресеты рядом с exe
-        if getattr(_sys, "frozen", False):
-            base = Path(exe).parent / "mcp_presets"
-            base.mkdir(parents=True, exist_ok=True)
-        for fname in presets:
+        for fname in ("antigravity.json", "cursor.json", "vscode.json", "claude_desktop.json"):
             p = base / fname
             if not p.exists():
                 try:
-                    p.write_text(json.dumps({"mcpServers": {"aipc": {"command": exe, "args": ["mcp"]}}}, ensure_ascii=False, indent=2), encoding="utf-8")
+                    p.write_text(json.dumps(preset, ensure_ascii=False, indent=2), encoding="utf-8")
                 except Exception:
                     pass
     except Exception:
@@ -95,7 +85,7 @@ def cmd_menu() -> int:
 
 def service_menu() -> None:
     from .menu import MenuItem, run_menu
-    from .installer import configure_all_ides, installed_exe, is_admin, is_installed
+    from .installer import is_admin, is_installed
 
     while True:
         idx = run_menu(
@@ -125,14 +115,16 @@ def service_menu() -> None:
                 return
             input("\nEnter... ")
         elif idx == 1:
-            exe = str(installed_exe() if is_installed() else "aipc")
-            lines = [f"{name}: {msg}" for name, _ok, msg in configure_all_ides(exe)]
+            from .installer import configure_all_ides
+
+            lines = [f"{name}: {msg}" for name, _ok, msg in configure_all_ides()]
             console.print(Align.center(Panel("\n".join(lines), title=" MCP ", width=MENU_WIDTH, border_style="green")))
             input("\nEnter... ")
         elif idx == 2:
             import sys as _sys
+            from .installer import current_exe
 
-            console.print(Align.center(Panel(f"admin={is_admin()}\nfrozen={is_installed()}\nexe={_sys.executable}", width=MENU_WIDTH, border_style=THEME["border"])))
+            console.print(Align.center(Panel(f"admin={is_admin()}\nfrozen={getattr(_sys, 'frozen', False)}\ninstalled={is_installed()}\nexe={current_exe()}", width=MENU_WIDTH, border_style=THEME["border"])))
             input("\nEnter... ")
 
 

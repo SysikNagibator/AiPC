@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import time
 
 
@@ -69,20 +70,74 @@ def scroll(dy: int = -500) -> dict:
         return {"ok": False, "error": str(e)}
 
 
+def _type_via_clipboard(text: str) -> bool:
+    """Печать любого юникода (кириллица!) через буфер обмена + Ctrl+V. Только Windows."""
+    import os as _os
+
+    if _os.name != "nt":
+        return False
+    try:
+        import ctypes
+
+        GMEM_MOVEABLE = 0x0002
+        CF_UNICODETEXT = 13
+        kernel32 = ctypes.windll.kernel32
+        user32 = ctypes.windll.user32
+        data = text + "\0"
+        buf = ctypes.create_unicode_buffer(data)
+        size = ctypes.sizeof(buf)
+        hmem = kernel32.GlobalAlloc(GMEM_MOVEABLE, size)
+        if not hmem:
+            return False
+        lock = kernel32.GlobalLock(hmem)
+        ctypes.memmove(lock, buf, size)
+        kernel32.GlobalUnlock(hmem)
+        if not user32.OpenClipboard(None):
+            kernel32.GlobalFree(hmem)
+            return False
+        try:
+            user32.EmptyClipboard()
+            user32.SetClipboardData(CF_UNICODETEXT, hmem)
+        finally:
+            user32.CloseClipboard()
+        import pyautogui  # type: ignore
+
+        pyautogui.hotkey("ctrl", "v")
+        return True
+    except Exception:
+        return False
+
+
 def type_text(text: str) -> dict:
     try:
         import pyautogui  # type: ignore
-        pyautogui.typewrite(text, interval=0.01)
+    except ImportError:
+        return {"ok": False, "error": "нет pyautogui. pip install pyautogui"}
+    try:
+        if text.isascii():
+            pyautogui.typewrite(text, interval=0.01)
+        else:
+            # pyautogui не умеет не-ASCII (кириллицу роняет) — идем через буфер
+            if not _type_via_clipboard(text):
+                return {"ok": False, "error": "не получилось вставить не-ASCII текст"}
         return {"ok": True, "len": len(text)}
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+_KEY_ALIASES = {"control": "ctrl", "ctl": "ctrl", "del": "delete", "esc": "escape", "return": "enter"}
 
 
 def press_key(keys: list) -> dict:
     """keys напр. ['ctrl','t'] или ['enter']."""
     try:
         import pyautogui  # type: ignore
-        norm = [k.lower() for k in keys]
+    except ImportError:
+        return {"ok": False, "error": "нет pyautogui. pip install pyautogui"}
+    try:
+        if not keys:
+            return {"ok": False, "error": "пустой список клавиш"}
+        norm = [_KEY_ALIASES.get(str(k).lower(), str(k).lower()) for k in keys]
         if len(norm) == 1:
             pyautogui.press(norm[0])
         else:
@@ -95,11 +150,16 @@ def press_key(keys: list) -> dict:
 def open_app(name_or_path: str) -> dict:
     """notepad/calc/chrome/путь к exe."""
     try:
-        if os.path.exists(name_or_path):
-            os.startfile(name_or_path)  # type: ignore[attr-defined]
+        if os.name == "nt":
+            if os.path.exists(name_or_path):
+                os.startfile(name_or_path)  # type: ignore[attr-defined]
+                return {"ok": True, "app": name_or_path}
+            # через start чтобы сработали алиасы Windows
+            subprocess.Popen(f'start "" "{name_or_path}"', shell=True)
             return {"ok": True, "app": name_or_path}
-        # через start чтобы сработали алиасы Windows
-        subprocess.Popen(f'start "" "{name_or_path}"', shell=True)
+        # Linux/macOS
+        opener = "open" if sys.platform == "darwin" else "xdg-open"
+        subprocess.Popen([opener, name_or_path])
         return {"ok": True, "app": name_or_path}
     except Exception as e:
         return {"ok": False, "error": str(e)}

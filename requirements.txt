@@ -5,7 +5,6 @@ mss>=9
 pillow>=10
 pyautogui>=0.9
 pygetwindow>=0.0.9
-pynput>=1.7
 psutil>=5.9
 paramiko>=3
 ddgs>=6

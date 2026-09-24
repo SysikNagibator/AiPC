@@ -43,13 +43,26 @@ def fs_write(path: str, text: str) -> dict:
         return {"ok": False, "error": str(e)}
 
 
+def _decode_output(data: bytes) -> str:
+    """Каскад кодировок: cmd.exe пишет в OEM (cp866), PowerShell в utf-8/cp1251."""
+    for enc in ("utf-8", "cp866", "cp1251"):
+        try:
+            return data.decode(enc)
+        except (UnicodeDecodeError, LookupError):
+            continue
+    return data.decode("utf-8", errors="replace")
+
+
 def run_cmd(cmd: str, cwd: str | None = None, timeout: int = 60) -> dict:
     ok, err = check_cmd_allowed(cmd)
     if not ok:
         return {"ok": False, "error": err}
     try:
-        r = subprocess.run(cmd, shell=True, cwd=cwd, capture_output=True, text=True, timeout=timeout)
-        out = (r.stdout or "") + (("\n" + r.stderr) if r.stderr else "")
+        r = subprocess.run(cmd, shell=True, cwd=cwd or None, capture_output=True, text=False, timeout=timeout)
+        out = _decode_output(r.stdout or b"")
+        err_text = _decode_output(r.stderr or b"")
+        if err_text:
+            out += "\n" + err_text
         return {"ok": r.returncode == 0, "code": r.returncode, "output": out[-20000:]}
     except subprocess.TimeoutExpired:
         return {"ok": False, "error": f"timeout {timeout}s"}
@@ -63,9 +76,7 @@ def process_list(limit: int = 50) -> dict:
     except ImportError:
         return {"ok": False, "error": "нет psutil. pip install psutil"}
     try:
-        procs = []
-        for p in list(__import__("psutil").process_iter(["pid", "name"]))[:limit]:
-            procs.append(p.info)
-        return {"ok": True, "processes": procs}
+        procs = [{"pid": p.info.get("pid"), "name": p.info.get("name")} for p in psutil.process_iter(["pid", "name"])]
+        return {"ok": True, "processes": procs[:limit]}
     except Exception as e:
         return {"ok": False, "error": str(e)}

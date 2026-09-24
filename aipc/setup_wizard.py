@@ -33,12 +33,11 @@ def setup_ide() -> None:
     from rich.panel import Panel
     from rich.align import Align
     from .logo import MENU_WIDTH, THEME
-    from .installer import configure_all_ides, installed_exe, is_installed, current_exe
+    from .installer import configure_all_ides
 
     console = Console(highlight=False, legacy_windows=False)
-    exe = str(installed_exe() if is_installed() else current_exe())
     lines = []
-    for name, ok, msg in configure_all_ides(exe):
+    for name, ok, msg in configure_all_ides():
         mark = "OK" if ok else "X"
         lines.append(f"{mark} {name}: {msg}")
     body = "\n".join(lines) + "\n\nПосле — Refresh MCP / перезапуск IDE."

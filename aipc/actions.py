@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 from .config import config_dir, ensure_default_config, load_config
@@ -31,10 +30,12 @@ def show_status() -> None:
     ok_m, err_m = safe_mark(MARK_OK), safe_mark(MARK_ERR)
 
     cfg = load_config()
+    from aipc import __version__
+
     lines = [
         f"Режим: {cfg.get('mode')}",
         f"Конфиг: {config_dir() / 'config.yaml'}",
-        f"Версия tools: 1.0.0",
+        f"Версия tools: {__version__}",
     ]
     # Проверки без падений
     checks = []
@@ -53,9 +54,17 @@ def start_core() -> None:
     console, Panel, Align, WIDTH, THEME = _rich()
     ensure_default_config()
     pid_file = config_dir() / "aipc.pid"
-    # Запуск MCP в фоне: python -m aipc mcp
     try:
-        proc = subprocess.Popen([sys.executable, "-m", "aipc", "mcp"], cwd=str(Path(__file__).resolve().parent.parent))
+        from .installer import current_exe, is_frozen
+
+        if is_frozen():
+            # exe не понимает -m: запускаем его же с командой mcp
+            proc = subprocess.Popen([str(current_exe()), "mcp"])
+        else:
+            proc = subprocess.Popen(
+                [sys.executable, "-m", "aipc", "mcp"],
+                cwd=str(Path(__file__).resolve().parent.parent),
+            )
         pid_file.write_text(str(proc.pid), encoding="utf-8")
         console.print(Align.center(Panel(f"AiPC-Core запущен, PID {proc.pid}\nПодключи MCP в IDE и работай.", title=" Запустить ", width=WIDTH, border_style="green")))
     except Exception as e:
@@ -93,7 +102,13 @@ def show_logs() -> None:
     text = ""
     try:
         if p.exists():
-            lines = p.read_text(encoding="utf-8", errors="replace").splitlines()[-20:]
+            # Хвост файла без чтения всего лога в память
+            with p.open("rb") as f:
+                f.seek(0, 2)
+                size = f.tell()
+                f.seek(max(0, size - 65536))
+                tail = f.read().decode("utf-8", errors="replace")
+            lines = tail.splitlines()[-20:]
             text = "\n".join(lines) or "(пусто)"
         else:
             text = "(лог пока пуст)"
