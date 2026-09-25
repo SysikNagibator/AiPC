@@ -50,49 +50,79 @@ def show_status() -> None:
     input("\nEnter чтобы вернуться... ")
 
 
+def _launch_core():
+    """Запустить Core, вернуть Popen. Frozen: сам exe + mcp, dev: python -m."""
+    from .installer import current_exe, is_frozen
+
+    if is_frozen():
+        return subprocess.Popen([str(current_exe()), "mcp"])
+    return subprocess.Popen(
+        [sys.executable, "-m", "aipc", "mcp"],
+        cwd=str(Path(__file__).resolve().parent.parent),
+    )
+
+
+def _proc_alive(pid: int) -> bool:
+    try:
+        import psutil  # type: ignore
+
+        return bool(psutil.pid_exists(pid))
+    except Exception:
+        pass
+    try:
+        r = subprocess.run(f'tasklist /FI "PID eq {pid}" /FO CSV /NH', shell=True,
+                           capture_output=True, text=True, timeout=10)
+        out = (r.stdout or "").lower()
+        return bool(out.strip()) and "no tasks" not in out and "нет задач" not in out
+    except Exception:
+        return False
+
+
 def start_core() -> None:
     console, Panel, Align, WIDTH, THEME = _rich()
     ensure_default_config()
     pid_file = config_dir() / "aipc.pid"
     try:
-        from .installer import current_exe, is_frozen
-
-        if is_frozen():
-            # exe не понимает -m: запускаем его же с командой mcp
-            proc = subprocess.Popen([str(current_exe()), "mcp"])
-        else:
-            proc = subprocess.Popen(
-                [sys.executable, "-m", "aipc", "mcp"],
-                cwd=str(Path(__file__).resolve().parent.parent),
-            )
+        proc = _launch_core()
         pid_file.write_text(str(proc.pid), encoding="utf-8")
-        console.print(Align.center(Panel(f"AiPC-Core запущен, PID {proc.pid}\nПодключи MCP в IDE и работай.", title=" Запустить ", width=WIDTH, border_style="green")))
+        alive = _wait_alive(proc.pid, 3.0)
+        if alive:
+            console.print(Align.center(Panel(
+                f"AiPC-Core запущен и отвечает.\nPID {proc.pid} | tools: 59 | режим ask",
+                title=" Запустить ", width=WIDTH, border_style="green")))
+        else:
+            console.print(Align.center(Panel(
+                f"Процесс {proc.pid} запустился, но не отвечает.\nСмотри Логи и Doctor.",
+                title=" Внимание ", width=WIDTH, border_style="yellow")))
     except Exception as e:
         console.print(Align.center(Panel(f"Не запустился: {e}", title=" Ошибка ", width=WIDTH, border_style="red")))
     input("\nEnter чтобы вернуться... ")
 
 
+def _wait_alive(pid: int, timeout: float) -> bool:
+    import time as _time
+
+    deadline = _time.monotonic() + timeout
+    while _time.monotonic() < deadline:
+        if _proc_alive(pid):
+            _time.sleep(0.4)
+            if _proc_alive(pid):
+                return True
+        else:
+            return False
+        _time.sleep(0.3)
+    return _proc_alive(pid)
+
+
 def stop_core() -> None:
     console, Panel, Align, WIDTH, THEME = _rich()
-    pid_file = config_dir() / "aipc.pid"
-    try:
-        if pid_file.exists():
-            pid = int(pid_file.read_text(encoding="utf-8").strip())
-            import os, signal
+    from .maintenance import kill_core
 
-            try:
-                if sys.platform == "win32":
-                    subprocess.run(f"taskkill /PID {pid} /F", shell=True, capture_output=True)
-                else:
-                    os.kill(pid, signal.SIGTERM)
-            except Exception:
-                pass
-            pid_file.unlink(missing_ok=True)
-            console.print(Align.center(Panel("Остановлен.", title=" Стоп ", width=WIDTH, border_style=THEME["border"])))
-        else:
-            console.print(Align.center(Panel("Не был запущен (нет PID-файла).", title=" Стоп ", width=WIDTH, border_style=THEME["border"])))
-    except Exception as e:
-        console.print(Align.center(Panel(f"Ошибка: {e}", title=" Ошибка ", width=WIDTH, border_style="red")))
+    res = kill_core()
+    if res.get("ok"):
+        console.print(Align.center(Panel(res.get("note", "Остановлен."), title=" Стоп ", width=WIDTH, border_style="green")))
+    else:
+        console.print(Align.center(Panel(f"Ошибка: {res.get('error')}", title=" Ошибка ", width=WIDTH, border_style="red")))
     input("\nEnter чтобы вернуться... ")
 
 

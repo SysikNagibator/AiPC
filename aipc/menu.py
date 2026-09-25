@@ -114,7 +114,7 @@ DANGER_KEYS = frozenset({"stop", "exit", "kill"})
 PULSE_MARKS = ["▶", "»", "›"]
 
 
-def _gradient(text: str, c1=(34, 211, 238), c2=(59, 130, 246)) -> "Text":
+def _gradient(text: str, c1=(34, 197, 94), c2=(134, 239, 172)) -> "Text":
     """Градиент посимвольно (rich из коробки градиент в Text не умеет)."""
     from rich.text import Text
 
@@ -185,6 +185,21 @@ def build_menu_panel(title: str, items: List[MenuItem], selected: int,
                  border_style=THEME["border"], padding=(1, 1))
 
 
+def build_screen(title: str, items: List[MenuItem], selected: int, footer: str,
+                 dot: str, frame: int = 0, flash: bool = False):
+    """Весь экран меню одним объектом — для Live (без мерцания) и для печати."""
+    from rich.align import Align
+    from rich.console import Group
+    from rich.text import Text
+
+    logo = Text(LOGO_BLOCK, style=THEME["logo"])
+    sub = Text(LOGO_SUB, style=THEME["logo_sub"])
+    counter = Text(f"Пункт {selected + 1}/{len(items)} {dot} 1-{len(items)} быстрый выбор", style="dim")
+    return Group(Align.center(logo), Align.center(sub), Text(""),
+                 Align.center(build_menu_panel(title, items, selected, footer, frame, flash)),
+                 Align.center(counter))
+
+
 def splash(console, duration: float = 0.45) -> None:
     """Быстрый сплэш с градиентом. Любая клавиша пропускает (байты возвращаем в буфер)."""
     import time as _time
@@ -211,7 +226,7 @@ def splash(console, duration: float = 0.45) -> None:
         bar = "█" * int(frac * 30) + "░" * (30 - int(frac * 30))
         console.clear()
         console.print(Align.center(_gradient("AiPC от Sysik")))
-        console.print(Align.center(f"[cyan]{bar}[/cyan]"))
+        console.print(Align.center(f"[green]{bar}[/green]"))
         if _time.monotonic() - t0 >= duration:
             break
         _time.sleep(duration / steps)
@@ -245,15 +260,7 @@ def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None,
     footer = hint or f"W/S + стрелки {dot} Enter выбор {dot} Q выход  |  {_status_part()}"
 
     def render(frame: int = 0, flash: bool = False):
-        # Лого отдельно, без рамки — оно не влияет на ровность бокса
-        logo = Text(LOGO_BLOCK, style=THEME["logo"])
-        sub = Text(LOGO_SUB, style=THEME["logo_sub"])
-        console.clear()
-        console.print(Align.center(logo))
-        console.print(Align.center(sub))
-        console.print()
-        console.print(Align.center(build_menu_panel(title, items, selected, footer, frame, flash)))
-        console.print(f"[dim]Пункт {selected + 1}/{len(items)} {dot} 1-{len(items)} быстрый выбор[/dim]", justify="center")
+        console.print(build_screen(title, items, selected, footer, dot, frame, flash))
 
     if splash_first:
         splash(console)
@@ -264,44 +271,48 @@ def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None,
     import msvcrt
     import time as _time
 
+    from rich.live import Live
+
     frame, last = 0, _time.monotonic()
-    render(frame)
+    # Live + альтернативный буфер: перерисовка без мерцания и мусора в скроллбэке
+    with Live(build_screen(title, items, selected, footer, dot, frame),
+              console=console, screen=True, auto_refresh=False) as live:
+        def show(f: int, flash: bool = False) -> None:
+            live.update(build_screen(title, items, selected, footer, dot, f, flash))
 
-    def flash_select() -> None:
-        import time as _t
+        def flash_select() -> None:
+            show(frame, flash=True)
+            _time.sleep(0.12)
 
-        render(frame, flash=True)
-        _t.sleep(0.12)
-
-    while True:
-        if msvcrt.kbhit():
-            key = _read_key_windows()
-            if key == "up":
-                selected = (selected - 1) % len(items)
-                frame = 0
-                render(frame)
-            elif key == "down":
-                selected = (selected + 1) % len(items)
-                frame = 0
-                render(frame)
-            elif key == "enter":
-                flash_select()
-                return selected
-            elif key in ("esc", "quit"):
-                return "quit"
-            elif key.isdigit():
-                n = int(key)
-                if 1 <= n <= len(items):
-                    selected = n - 1
+        while True:
+            if msvcrt.kbhit():
+                key = _read_key_windows()
+                if key == "up":
+                    selected = (selected - 1) % len(items)
+                    frame = 0
+                    show(frame)
+                elif key == "down":
+                    selected = (selected + 1) % len(items)
+                    frame = 0
+                    show(frame)
+                elif key == "enter":
                     flash_select()
-                    return n - 1
-            # unknown — не перерисовываем
-        elif _time.monotonic() - last >= 0.16:
-            last = _time.monotonic()
-            frame += 1
-            render(frame)
-        else:
-            _time.sleep(0.02)
+                    return selected
+                elif key in ("esc", "quit"):
+                    return "quit"
+                elif key.isdigit():
+                    n = int(key)
+                    if 1 <= n <= len(items):
+                        selected = n - 1
+                        flash_select()
+                        return n - 1
+                # unknown — не перерисовываем
+            elif _time.monotonic() - last >= 0.2:
+                last = _time.monotonic()
+                frame += 1
+                show(frame)
+            else:
+                _time.sleep(0.02)
 
 
 def _posix_menu_loop(console, render, items: List[MenuItem], footer: str):

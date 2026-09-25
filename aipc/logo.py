@@ -15,16 +15,16 @@ LOGO_BLOCK = r"""
 LOGO_COMPACT = f"[ AiPC :: от Sysik v{__version__} ]"
 LOGO_SUB = f"от Sysik v{__version__}"
 
-# Палитра (темный cmd по умолчанию)
+# Палитра: зелёная тема (видно и на чёрном, и на белом фоне cmd)
 THEME = {
-    "bg": "#0B1220",
-    "logo": "cyan",
-    "logo_sub": "#9AA4B2",
-    "accent": "cyan",
-    "selected_bg": "blue",
+    "bg": "#07130C",
+    "logo": "#4ade80",
+    "logo_sub": "#8fa98f",
+    "accent": "#22c55e",
+    "selected_bg": "#15803d",
     "selected_fg": "white",
     "normal_fg": "#9AA4B2",
-    "border": "cyan",
+    "border": "#22c55e",
     "footer_bg": "grey23",
     "footer_fg": "black",
     "ok": "green",
