@@ -3,8 +3,11 @@
   aipc mcp        -> MCP-сервер (stdio) для IDE
   aipc status     -> быстрая проверка
   aipc selftest   -> проверка работы
-  aipc install    -> установка в PATH (требует админа, через Setup)
   aipc setup      -> мастер настройки
+  aipc install    -> установка в PATH (требует админа, через Setup)
+  aipc update     -> самообновление с GitHub
+  aipc doctor     -> полная диагностика
+  aipc kill       -> аварийно остановить Core
 """
 from __future__ import annotations
 
@@ -62,13 +65,15 @@ def cmd_menu() -> int:
                 MenuItem("Запустить AiPC-Core", "run"),
                 MenuItem("Остановить", "stop"),
                 MenuItem("Статус / Проверка работы", "status"),
+                MenuItem("Диагностика (doctor)", "doctor"),
+                MenuItem("Проверить обновления", "update"),
                 MenuItem("Настроить", "setup"),
-                MenuItem("Сервис (PATH, автозапуск)", "service"),
+                MenuItem("Сервис (установка, MCP)", "service"),
                 MenuItem("Логи", "logs"),
                 MenuItem("Выход", "exit"),
             ],
         )
-        if idx == "quit" or idx == 6:
+        if idx == "quit" or idx == 8:
             return 0
         if idx == 0:
             A.start_core()
@@ -77,10 +82,15 @@ def cmd_menu() -> int:
         elif idx == 2:
             T.show_selftest()
         elif idx == 3:
-            W.setup_menu()
+            A.show_doctor()
         elif idx == 4:
-            service_menu()
+            if A.show_update_check():
+                return 0
         elif idx == 5:
+            W.setup_menu()
+        elif idx == 6:
+            service_menu()
+        elif idx == 7:
             A.show_logs()
 
 
@@ -94,11 +104,12 @@ def service_menu() -> None:
             [
                 MenuItem("Переустановить себя + MCP (нужен админ)", "path"),
                 MenuItem("Только перенастроить MCP во всех IDE", "mcp"),
+                MenuItem("Остановить Core (kill)", "kill"),
                 MenuItem("Проверить: где лежу / админ", "admin"),
                 MenuItem("Назад", "back"),
             ],
         )
-        if idx == "quit" or idx == 3:
+        if idx == "quit" or idx == 4:
             return
         from rich.console import Console
         from rich.panel import Panel
@@ -122,6 +133,12 @@ def service_menu() -> None:
             console.print(Align.center(Panel("\n".join(lines), title=" MCP ", width=MENU_WIDTH, border_style="green")))
             input("\nEnter... ")
         elif idx == 2:
+            from .maintenance import kill_core
+
+            res = kill_core()
+            console.print(Align.center(Panel(res.get("note", res.get("error", "")), width=MENU_WIDTH, border_style="green" if res.get("ok") else "red")))
+            input("\nEnter... ")
+        elif idx == 3:
             import sys as _sys
             from .installer import current_exe
 
@@ -175,6 +192,21 @@ def main(argv: list[str] | None = None) -> int:
             return privileged_self_install()
         ensure_installed()
         return 0
+    if cmd == "update":
+        from .maintenance import self_update
+
+        return self_update()
+    if cmd == "doctor":
+        from . import actions as A
+
+        A.show_doctor()
+        return 0
+    if cmd == "kill":
+        from .maintenance import kill_core
+
+        res = kill_core()
+        print(res.get("note", res.get("error", res)))
+        return 0 if res.get("ok") else 1
     if cmd in ("--help", "-h", "help"):
         print(__doc__)
         return 0

@@ -183,6 +183,12 @@ def create_server():
         cfg = load_config()
         return {"ok": True, "version": TOOLS_VERSION, "mode": cfg.get("mode"), "system_prompt": SYSTEM_PROMPT[:200]}
 
+    if hasattr(mcp, "prompt"):
+        @mcp.prompt()
+        def aipc_instructions() -> str:
+            """Системный промпт AiPC: полный доступ к ПК, цикл увидел-сделал-проверил."""
+            return SYSTEM_PROMPT
+
     return mcp
 
 

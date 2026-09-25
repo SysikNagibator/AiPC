@@ -96,6 +96,58 @@ def stop_core() -> None:
     input("\nEnter чтобы вернуться... ")
 
 
+def show_doctor() -> None:
+    console, Panel, Align, WIDTH, THEME = _rich()
+    from rich.table import Table
+    from .logo import MARK_OK, MARK_ERR, safe_mark
+    from .maintenance import doctor
+
+    ok_m, err_m = safe_mark(MARK_OK), safe_mark(MARK_ERR)
+    table = Table(show_header=False, box=None, padding=(0, 1), expand=True)
+    table.add_column("check")
+    table.add_column("res")
+    all_ok = True
+    for name, ok, note in doctor():
+        all_ok = all_ok and ok
+        mark = ok_m if ok else err_m
+        style = THEME["ok"] if ok else THEME["err"]
+        table.add_row(name, f"[{style}]{mark} {note}[/{style}]")
+    title = " Doctor: ВСЕ ОК " if all_ok else " Doctor: есть замечания "
+    console.print(Align.center(Panel(table, title=title, width=WIDTH, border_style="green" if all_ok else "yellow")))
+    input("\nEnter чтобы вернуться... ")
+
+
+def show_update_check() -> bool:
+    """Проверить релиз на GitHub. Если есть новее — спросить и обновить. True = обновление запущено."""
+    from .maintenance import check_update, self_update
+    from .menu import MenuItem, run_menu
+
+    console, Panel, Align, WIDTH, THEME = _rich()
+    console.print(Align.center(Panel("Проверяю GitHub...", title=" Обновления ", width=WIDTH, border_style=THEME["border"])))
+    info = check_update()
+    if not info.get("ok"):
+        console.print(Align.center(Panel(f"Не проверить: {info.get('error')}\nПроверь интернет и попробуй позже.", title=" Обновления ", width=WIDTH, border_style="red")))
+        input("\nEnter чтобы вернуться... ")
+        return False
+    if not info.get("update"):
+        console.print(Align.center(Panel(f"У тебя свежее: {info.get('current')}", title=" Обновления ", width=WIDTH, border_style="green")))
+        input("\nEnter чтобы вернуться... ")
+        return False
+    notes = info.get("notes", "")
+    body = f"Текущая: {info.get('current')}\nНовая: {info.get('latest')}\n\n{notes[:800]}"
+    console.print(Align.center(Panel(body, title=" Найдено обновление ", width=WIDTH, border_style="yellow")))
+    choice = run_menu("Обновить сейчас?", [MenuItem("Да, скачать и обновить", "yes"), MenuItem("Нет, позже", "no")])
+    if choice == "quit" or choice == 1:
+        return False
+    code = self_update()
+    if code == 0:
+        console.print(Align.center(Panel("Обновление запущено, это окно можно закрыть.", width=WIDTH, border_style="green")))
+        input("\nEnter чтобы выйти... ")
+        return True
+    input("\nEnter чтобы вернуться... ")
+    return False
+
+
 def show_logs() -> None:
     console, Panel, Align, WIDTH, THEME = _rich()
     p = config_dir() / "audit.log"

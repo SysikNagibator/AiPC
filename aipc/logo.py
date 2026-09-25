@@ -1,4 +1,7 @@
 # AiPC от Sysik — лого и тема оформления (без эмодзи, только символы CMD)
+from __future__ import annotations
+
+from . import __version__
 
 LOGO_BLOCK = r"""
  █████╗ ██╗██████╗  ██████╗
@@ -9,8 +12,8 @@ LOGO_BLOCK = r"""
 ╚═╝  ╚═╝╚═╝╚═╝      ╚═════╝
 """.rstrip("\n")
 
-LOGO_COMPACT = "[ AiPC :: от Sysik v1.0 ]"
-LOGO_SUB = "от Sysik v1.0"
+LOGO_COMPACT = f"[ AiPC :: от Sysik v{__version__} ]"
+LOGO_SUB = f"от Sysik v{__version__}"
 
 # Палитра (темный cmd по умолчанию)
 THEME = {
