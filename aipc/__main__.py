@@ -77,7 +77,11 @@ def cmd_menu() -> int:
             splash_first=first,
         )
         first = False
+        from .menu import _menu_log
+
+        _menu_log(f"menu-result idx={idx}")
         if idx == "quit" or idx == 8:
+            _menu_log("menu exit")
             return 0
         if idx == 0:
             A.start_core()

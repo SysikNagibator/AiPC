@@ -66,6 +66,22 @@ def _console_encoding() -> str:
     return "cp866"
 
 
+def _menu_log(event: str) -> None:
+    """Журнал меню для диагностики: какая клавиша пришла и что вернули."""
+    try:
+        import datetime
+        from pathlib import Path
+
+        p = Path.home() / ".aipc" / "menu.log"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        ts = datetime.datetime.now().isoformat(timespec="seconds")
+        lines = p.read_text(encoding="utf-8", errors="replace").splitlines()[-200:] if p.exists() else []
+        lines.append(f"{ts} | {event}")
+        p.write_text("\n".join(lines[-200:]) + "\n", encoding="utf-8")
+    except Exception:
+        pass
+
+
 def _read_key_wide() -> str:
     """Блокирующее чтение клавиши через getwch (юникод сразу, без кодовых страниц).
 
@@ -322,8 +338,10 @@ def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None,
             while True:
                 try:
                     key = _read_key_wide()
-                except (OSError, EOFError, KeyboardInterrupt):
+                except (OSError, EOFError, KeyboardInterrupt) as e:
+                    _menu_log(f"input-error {type(e).__name__}")
                     return _fallback_numeric_menu(title, items)
+                _menu_log(f"key={key!r} selected={selected} title={title[:30]}")
                 if key == "up":
                     selected = (selected - 1) % len(items)
                     show(0)
@@ -332,14 +350,17 @@ def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None,
                     show(0)
                 elif key == "enter":
                     flash_select()
+                    _menu_log(f"return idx={selected}")
                     return selected
                 elif key in ("esc", "quit"):
+                    _menu_log("return quit")
                     return "quit"
                 elif key.isdigit():
                     n = int(key)
                     if 1 <= n <= len(items):
                         selected = n - 1
                         flash_select()
+                        _menu_log(f"return digit={n - 1}")
                         return n - 1
                 # unknown — игнорим
     except Exception:

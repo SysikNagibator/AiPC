@@ -1,6 +1,6 @@
 {
   "name": "aipc",
-  "version": "1.0.4.8",
+  "version": "1.0.4.9",
   "openapi_fallback": "для IDE без MCP: те же tools через HTTP (план Фазы 6)",
   "tools": [
     {
