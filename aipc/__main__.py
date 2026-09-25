@@ -8,6 +8,7 @@
   aipc update     -> самообновление с GitHub
   aipc doctor     -> полная диагностика
   aipc kill       -> аварийно остановить Core
+  aipc keys       -> проверка клавиатуры (что видит меню)
 """
 from __future__ import annotations
 
@@ -210,6 +211,17 @@ def main(argv: list[str] | None = None) -> int:
         res = kill_core()
         print(res.get("note", res.get("error", res)))
         return 0 if res.get("ok") else 1
+    if cmd == "keys":
+        from .menu import _read_key_wide
+
+        print("Жми клавиши (W/S/стрелки/Enter/Esc), 5 нажатий...")
+        for i in range(5):
+            try:
+                print(f"  {i + 1}: {_read_key_wide()}")
+            except (OSError, EOFError, KeyboardInterrupt) as e:
+                print(f"  ОШИБКА ВВОДА: {type(e).__name__}: {e}")
+                return 1
+        return 0
     if cmd in ("--help", "-h", "help"):
         print(__doc__)
         return 0

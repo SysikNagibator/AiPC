@@ -88,7 +88,7 @@ def _read_key_wide() -> str:
         return "up"
     if s in ("s", "ы", "j"):
         return "down"
-    if s in ("q", "й", "e", "у"):
+    if s in ("q", "й"):
         return "quit"
     if s.isdigit() and s != "0":
         return s
@@ -132,7 +132,7 @@ def _read_key_windows() -> str:
         return "up"
     if s in ("s", "ы"):
         return "down"
-    if s in ("q", "й", "e", "у"):
+    if s in ("q", "й"):
         return "quit"
     if s.isdigit() and s != "0":
         return s
@@ -297,47 +297,36 @@ def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None,
     if os.name != "nt":
         return _posix_menu_loop(console, render, items, footer)
 
-    import threading
     import time as _time
 
     from rich.live import Live
 
-    frame = [0]
-    lock = threading.Lock()
-    stop_anim = threading.Event()
-
-    def show(f: int, flash: bool = False) -> None:
-        with lock:
-            try:
-                live.update(build_screen(title, items, selected, footer, dot, f, flash))
-            except Exception:
-                pass
+    def show(f: int = 0, flash: bool = False) -> None:
+        try:
+            live.update(build_screen(title, items, selected, footer, dot, f, flash))
+        except Exception:
+            pass
 
     def flash_select() -> None:
-        show(frame[0], flash=True)
+        show(0, flash=True)
         _time.sleep(0.12)
 
-    def animator() -> None:
-        while not stop_anim.wait(0.2):
-            frame[0] += 1
-            show(frame[0])
-
-    # Ввод — блокирующий getwch в главном потоке (как в старом меню, надёжно).
-    # Анимация — в фоне, экрану не мешает и клавиши не ест.
-    with Live(build_screen(title, items, selected, footer, dot, 0),
-              console=console, screen=True, auto_refresh=False) as live:
-        worker = threading.Thread(target=animator, daemon=True)
-        worker.start()
-        try:
+    # Один поток: блокирующий getwch + перерисовка только по нажатию.
+    # Никаких фоновых потоков — Live дергаем только отсюда: гонок,
+    # мерцания и съеденных клавиш нет. Ввод как в старом меню.
+    try:
+        with Live(build_screen(title, items, selected, footer, dot, 0),
+                  console=console, screen=True, auto_refresh=False) as live:
             while True:
-                key = _read_key_wide()
+                try:
+                    key = _read_key_wide()
+                except (OSError, EOFError, KeyboardInterrupt):
+                    return _fallback_numeric_menu(title, items)
                 if key == "up":
                     selected = (selected - 1) % len(items)
-                    frame[0] = 0
                     show(0)
                 elif key == "down":
                     selected = (selected + 1) % len(items)
-                    frame[0] = 0
                     show(0)
                 elif key == "enter":
                     flash_select()
@@ -350,9 +339,9 @@ def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None,
                         selected = n - 1
                         flash_select()
                         return n - 1
-                # unknown — игнорим, пульс идёт дальше
-        finally:
-            stop_anim.set()
+                # unknown — игнорим
+    except Exception:
+        return _fallback_numeric_menu(title, items)
 
 
 def _posix_menu_loop(console, render, items: List[MenuItem], footer: str):
