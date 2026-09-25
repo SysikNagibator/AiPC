@@ -110,7 +110,115 @@ def _read_key_windows() -> str:
     return "unknown"
 
 
-def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None) -> int | str:
+DANGER_KEYS = frozenset({"stop", "exit", "kill"})
+PULSE_MARKS = ["▶", "»", "›"]
+
+
+def _gradient(text: str, c1=(34, 211, 238), c2=(59, 130, 246)) -> "Text":
+    """Градиент посимвольно (rich из коробки градиент в Text не умеет)."""
+    from rich.text import Text
+
+    out = Text()
+    n = max(1, len(text) - 1)
+    for i, ch in enumerate(text):
+        t = i / n
+        r = int(c1[0] + (c2[0] - c1[0]) * t)
+        g = int(c1[1] + (c2[1] - c1[1]) * t)
+        b = int(c1[2] + (c2[2] - c1[2]) * t)
+        out.append(ch, style=f"bold #{r:02x}{g:02x}{b:02x}")
+    return out
+
+
+def _status_part() -> str:
+    """mode • версия • число tools. Всё с защитой — никогда не роняет меню."""
+    try:
+        from .config import load_config
+
+        mode = str(load_config().get("mode", "ask"))
+    except Exception:
+        mode = "ask"
+    try:
+        from . import __version__ as _ver
+    except Exception:
+        _ver = "?"
+    tools = "59"
+    try:
+        import json
+        from pathlib import Path
+
+        tj = Path(__file__).resolve().parent.parent / "tools.json"
+        if tj.exists():
+            tools = str(len(json.loads(tj.read_text(encoding="utf-8")).get("tools", [])))
+    except Exception:
+        pass
+    return f"{mode} • v{_ver} • {tools} tools"
+
+
+def build_menu_panel(title: str, items: List[MenuItem], selected: int,
+                     footer: str, frame: int = 0, flash: bool = False):
+    """Чистая сборка панели (без console) — тестируемо, правая стенка всегда ровная."""
+    from rich.align import Align
+    from rich.console import Group
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.text import Text
+
+    mark = PULSE_MARKS[frame % len(PULSE_MARKS)]
+    table = Table(show_header=False, box=None, padding=(0, 2), expand=True)
+    table.add_column("menu", overflow="ellipsis")
+    for i, it in enumerate(items):
+        danger = it.key in DANGER_KEYS
+        if i == selected:
+            if flash:
+                row = Text(f"  {it.label}  ", style="bold black on white")
+            elif danger:
+                row = Text(f"{mark} {it.label}", style=f"bold {THEME['selected_fg']} on red")
+            else:
+                row = Text(f"{mark} {it.label}", style=f"bold {THEME['selected_fg']} on {THEME['selected_bg']}")
+        else:
+            bullet = Text("● ", style="red" if danger else THEME["accent"])
+            row = Text.assemble(bullet, (it.label, THEME["normal_fg"]))
+        table.add_row(row)
+    rule = Text("─" * 44, style="dim")
+    body = Group(Align.center(_gradient(title)), Align.center(rule), table)
+    return Panel(body, subtitle=f" {footer} ", width=MENU_WIDTH,
+                 border_style=THEME["border"], padding=(1, 1))
+
+
+def splash(console, duration: float = 0.45) -> None:
+    """Быстрый сплэш с градиентом. Любая клавиша пропускает (байты возвращаем в буфер)."""
+    import time as _time
+
+    from rich.align import Align
+
+    steps = 6
+    t0 = _time.monotonic()
+    for s in range(steps + 1):
+        if os.name == "nt":
+            try:
+                import msvcrt
+
+                if msvcrt.kbhit():
+                    ch = msvcrt.getch()
+                    if ch in (b"\x00", b"\xe0"):
+                        ch2 = msvcrt.getch()
+                        msvcrt.ungetch(ch2)
+                    msvcrt.ungetch(ch)
+                    break
+            except Exception:
+                pass
+        frac = s / steps
+        bar = "█" * int(frac * 30) + "░" * (30 - int(frac * 30))
+        console.clear()
+        console.print(Align.center(_gradient("AiPC от Sysik")))
+        console.print(Align.center(f"[cyan]{bar}[/cyan]"))
+        if _time.monotonic() - t0 >= duration:
+            break
+        _time.sleep(duration / steps)
+
+
+def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None,
+             splash_first: bool = False) -> int | str:
     """Рисует меню шириной MENU_WIDTH через rich.Panel. Возвращает index или 'quit'.
 
     Никаких ручных '│' + пробелы — только Panel/Table, иначе правая стенка едет.
@@ -133,10 +241,10 @@ def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None) -> i
 
     console = Console(highlight=False, legacy_windows=False, color_system="truecolor")
     selected = 0
-    footer = hint or f"W/S + стрелки {safe_mark('•')} Enter выбор {safe_mark('•')} Q выход"
-    sel_mark = safe_mark(MARK_SELECTED)
+    dot = safe_mark("•")
+    footer = hint or f"W/S + стрелки {dot} Enter выбор {dot} Q выход  |  {_status_part()}"
 
-    def render():
+    def render(frame: int = 0, flash: bool = False):
         # Лого отдельно, без рамки — оно не влияет на ровность бокса
         logo = Text(LOGO_BLOCK, style=THEME["logo"])
         sub = Text(LOGO_SUB, style=THEME["logo_sub"])
@@ -144,55 +252,56 @@ def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None) -> i
         console.print(Align.center(logo))
         console.print(Align.center(sub))
         console.print()
+        console.print(Align.center(build_menu_panel(title, items, selected, footer, frame, flash)))
+        console.print(f"[dim]Пункт {selected + 1}/{len(items)} {dot} 1-{len(items)} быстрый выбор[/dim]", justify="center")
 
-        table = Table(show_header=False, box=None, padding=(0, 2), expand=True)
-        table.add_column("menu", overflow="ellipsis")
-        for i, it in enumerate(items):
-            if i == selected:
-                row = Text(f"{sel_mark} {it.label}", style=f"bold {THEME['selected_fg']} on {THEME['selected_bg']}")
-            else:
-                row = Text(f"  {it.label}", style=THEME["normal_fg"])
-            table.add_row(row)
-
-        panel = Panel(
-            table,
-            title=f" {title} ",
-            subtitle=f" {footer} ",
-            width=MENU_WIDTH,
-            border_style=THEME["border"],
-            padding=(1, 0),
-        )
-        console.print(Align.center(panel))
-        console.print(f"[dim]Пункт {selected + 1}/{len(items)} • 1-{len(items)} быстрый выбор[/dim]", justify="center")
+    if splash_first:
+        splash(console)
 
     if os.name != "nt":
         return _posix_menu_loop(console, render, items, footer)
 
     import msvcrt
+    import time as _time
 
-    render()
+    frame, last = 0, _time.monotonic()
+    render(frame)
+
+    def flash_select() -> None:
+        import time as _t
+
+        render(frame, flash=True)
+        _t.sleep(0.12)
+
     while True:
-        try:
-            # скрываем курсор на время навигации
-            pass
-        except Exception:
-            pass
-        key = _read_key_windows()
-        if key == "up":
-            selected = (selected - 1) % len(items)
-            render()
-        elif key == "down":
-            selected = (selected + 1) % len(items)
-            render()
-        elif key == "enter":
-            return selected
-        elif key in ("esc", "quit"):
-            return "quit"
-        elif key.isdigit():
-            n = int(key)
-            if 1 <= n <= len(items):
-                return n - 1
-        # unknown — перерисовать не нужно
+        if msvcrt.kbhit():
+            key = _read_key_windows()
+            if key == "up":
+                selected = (selected - 1) % len(items)
+                frame = 0
+                render(frame)
+            elif key == "down":
+                selected = (selected + 1) % len(items)
+                frame = 0
+                render(frame)
+            elif key == "enter":
+                flash_select()
+                return selected
+            elif key in ("esc", "quit"):
+                return "quit"
+            elif key.isdigit():
+                n = int(key)
+                if 1 <= n <= len(items):
+                    selected = n - 1
+                    flash_select()
+                    return n - 1
+            # unknown — не перерисовываем
+        elif _time.monotonic() - last >= 0.16:
+            last = _time.monotonic()
+            frame += 1
+            render(frame)
+        else:
+            _time.sleep(0.02)
 
 
 def _posix_menu_loop(console, render, items: List[MenuItem], footer: str):

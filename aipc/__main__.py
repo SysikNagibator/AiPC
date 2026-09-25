@@ -58,6 +58,7 @@ def cmd_menu() -> int:
         raise
     except Exception:
         pass
+    first = True
     while True:
         idx = run_menu(
             f"AiPC от Sysik v{_ver}",
@@ -72,7 +73,9 @@ def cmd_menu() -> int:
                 MenuItem("Логи", "logs"),
                 MenuItem("Выход", "exit"),
             ],
+            splash_first=first,
         )
+        first = False
         if idx == "quit" or idx == 8:
             return 0
         if idx == 0:
