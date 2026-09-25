@@ -66,6 +66,35 @@ def _console_encoding() -> str:
     return "cp866"
 
 
+def _read_key_wide() -> str:
+    """Блокирующее чтение клавиши через getwch (юникод сразу, без кодовых страниц).
+
+    Тот же механизм что в старом рабочем меню: блокирующий вызов, никаких kbhit.
+    """
+    import msvcrt
+
+    ch = msvcrt.getwch()
+    if ch in ("\x00", "\xe0"):
+        ch2 = msvcrt.getwch()
+        return {"H": "up", "P": "down", "K": "up", "M": "down"}.get(ch2, "unknown")
+    if ch == "\r":
+        return "enter"
+    if ch == "\x1b":
+        return "esc"
+    if ch == "\x03":
+        return "quit"
+    s = ch.lower()
+    if s in ("w", "ц", "k"):
+        return "up"
+    if s in ("s", "ы", "j"):
+        return "down"
+    if s in ("q", "й", "e", "у"):
+        return "quit"
+    if s.isdigit() and s != "0":
+        return s
+    return "unknown"
+
+
 def _read_key_windows() -> str:
     """Возвращает символический код: up/down/enter/esc/quit/1-9/unknown."""
     import msvcrt
@@ -268,33 +297,48 @@ def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None,
     if os.name != "nt":
         return _posix_menu_loop(console, render, items, footer)
 
-    import msvcrt
+    import threading
     import time as _time
 
     from rich.live import Live
 
-    frame, last = 0, _time.monotonic()
-    # Live + альтернативный буфер: перерисовка без мерцания и мусора в скроллбэке
-    with Live(build_screen(title, items, selected, footer, dot, frame),
+    frame = [0]
+    lock = threading.Lock()
+    stop_anim = threading.Event()
+
+    def show(f: int, flash: bool = False) -> None:
+        with lock:
+            try:
+                live.update(build_screen(title, items, selected, footer, dot, f, flash))
+            except Exception:
+                pass
+
+    def flash_select() -> None:
+        show(frame[0], flash=True)
+        _time.sleep(0.12)
+
+    def animator() -> None:
+        while not stop_anim.wait(0.2):
+            frame[0] += 1
+            show(frame[0])
+
+    # Ввод — блокирующий getwch в главном потоке (как в старом меню, надёжно).
+    # Анимация — в фоне, экрану не мешает и клавиши не ест.
+    with Live(build_screen(title, items, selected, footer, dot, 0),
               console=console, screen=True, auto_refresh=False) as live:
-        def show(f: int, flash: bool = False) -> None:
-            live.update(build_screen(title, items, selected, footer, dot, f, flash))
-
-        def flash_select() -> None:
-            show(frame, flash=True)
-            _time.sleep(0.12)
-
-        while True:
-            if msvcrt.kbhit():
-                key = _read_key_windows()
+        worker = threading.Thread(target=animator, daemon=True)
+        worker.start()
+        try:
+            while True:
+                key = _read_key_wide()
                 if key == "up":
                     selected = (selected - 1) % len(items)
-                    frame = 0
-                    show(frame)
+                    frame[0] = 0
+                    show(0)
                 elif key == "down":
                     selected = (selected + 1) % len(items)
-                    frame = 0
-                    show(frame)
+                    frame[0] = 0
+                    show(0)
                 elif key == "enter":
                     flash_select()
                     return selected
@@ -306,13 +350,9 @@ def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None,
                         selected = n - 1
                         flash_select()
                         return n - 1
-                # unknown — не перерисовываем
-            elif _time.monotonic() - last >= 0.2:
-                last = _time.monotonic()
-                frame += 1
-                show(frame)
-            else:
-                _time.sleep(0.02)
+                # unknown — игнорим, пульс идёт дальше
+        finally:
+            stop_anim.set()
 
 
 def _posix_menu_loop(console, render, items: List[MenuItem], footer: str):
