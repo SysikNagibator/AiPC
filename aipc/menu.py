@@ -303,7 +303,9 @@ def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None,
 
     def show(f: int = 0, flash: bool = False) -> None:
         try:
-            live.update(build_screen(title, items, selected, footer, dot, f, flash))
+            # refresh=True обязателен: update() сам НЕ перерисовывает,
+            # а auto_refresh выключен против мерцания
+            live.update(build_screen(title, items, selected, footer, dot, f, flash), refresh=True)
         except Exception:
             pass
 
