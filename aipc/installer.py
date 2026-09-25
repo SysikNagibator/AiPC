@@ -371,18 +371,28 @@ def privileged_self_install() -> int:
     print(f"[1/2] {msg1}")
     ok2, msg2 = add_to_system_path(install_dir())
     print(f"[2/2] {msg2}")
-    for name, ok, msg in configure_all_ides(str(installed_exe())):
+    for name, ok, msg in configure_all_ides(str(installed_exe()), ["mcp"]):
         print(f"[mcp] {name}: {msg}")
     return 0 if (ok1 and ok2) else 1
+
+
+def _installed_is_fresh() -> bool:
+    """Копия в Program Files существует И совпадает с нами по размеру."""
+    try:
+        target = installed_exe()
+        return target.exists() and target.stat().st_size == current_exe().stat().st_size
+    except Exception:
+        return False
 
 
 def ensure_installed() -> str:
     """Гарантировать что exe в Program Files + MCP настроен. Возвращает путь к exe для работы.
 
     - dev-режим (python): ничего не копирует, только MCP на текущий python-модуль.
-    - frozen вне Program Files: просит UAC (один раз), ждет конца установки,
-      затем перезапускается из Program Files.
-    - frozen в Program Files: просто обновляет MCP и работает.
+    - frozen в Program Files: обновляет MCP и работает прямо здесь.
+    - frozen вне Program Files: тихая установка (админ-окно скрыто, прогресс точками
+      в этом окне), затем работаем ДАЛЬШЕ В ЭТОМ ЖЕ ОКНЕ — никаких новых окон,
+      сворачиваний и перезапусков. При отказе UAC — тоже продолжаем в меню с предупреждением.
     """
     if not is_frozen():
         configure_all_ides()
@@ -395,31 +405,29 @@ def ensure_installed() -> str:
     # Первый запуск не из Program Files
     if not is_admin():
         print("Первый запуск: кладу себя в Program Files и настраиваю MCP.")
-        print("Сейчас попрошу права админа один раз...")
+        print("Сейчас попрошу права админа один раз, установка пойдет в этом окне...")
         time.sleep(1)
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", str(current_exe()), "--self-install", None, 1)
-        # Ждем пока админ-процесс закончит (макс 3 мин)
-        for _ in range(180):
+        # SW_HIDE(0): админ-консоль не мелькает отдельным окном
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", str(current_exe()), "--self-install", None, 0)
+        ok = False
+        for i in range(120):
             time.sleep(1)
-            if installed_exe().exists():
+            if i % 5 == 4:
+                print(".", end="", flush=True)
+            if _installed_is_fresh():
+                ok = True
                 break
-        # Перезапуск из установленного места, дальше — меню
-        try:
-            import subprocess
+        print()
+        if ok:
+            print("Установлено. Продолжаю в этом окне.")
+            configure_all_ides(str(installed_exe()), ["mcp"])
+            return str(current_exe())
+        print("Не дождался установки (UAC отклонён или ошибка).")
+        print("Работаю без установки — команда `aipc` и MCP в IDE появятся после установки.")
+        configure_all_ides(*mcp_server_entry())
+        return str(current_exe())
 
-            subprocess.Popen([str(installed_exe())])
-        except Exception:
-            pass
-        sys.exit(0)
-
-    # Уже админ, но лежим не там — ставим молча
-    code = privileged_self_install()
-    if code == 0:
-        try:
-            import subprocess
-
-            subprocess.Popen([str(installed_exe())])
-        except Exception:
-            pass
-        sys.exit(0)
+    # Уже админ, но лежим не там — ставим и продолжаем здесь же
+    privileged_self_install()
+    configure_all_ides(*mcp_server_entry())
     return str(current_exe())
