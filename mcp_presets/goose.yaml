@@ -1,0 +1,8 @@
+extensions:
+  aipc:
+    cmd: C:\Program Files\AiPC\aipc.exe
+    args:
+      - mcp
+    type: stdio
+    enabled: true
+    timeout: 300

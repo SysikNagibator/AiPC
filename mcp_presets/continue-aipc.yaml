@@ -1,0 +1,6 @@
+name: AiPC
+version: 1.0.0
+schema: v1
+command: C:\Program Files\AiPC\aipc.exe
+args:
+  - mcp

@@ -46,7 +46,8 @@ def mouse_click(x: int, y: int, button: str = "left") -> dict:
         return {"ok": False, "error": str(e)}
 
 
-def mouse_drag(x1: int, y1: int, x2: int, y2: int) -> dict:
+def mouse_drag(x1: int, y1: int, x2: int, y2: int, modifier: str = "") -> dict:
+    """Драг 0-1000. modifier: ctrl/shift/alt — держать во время драга."""
     try:
         import pyautogui  # type: ignore
     except ImportError:
@@ -54,9 +55,19 @@ def mouse_drag(x1: int, y1: int, x2: int, y2: int) -> dict:
     try:
         ax1, ay1 = _rel_to_abs(x1, y1)
         ax2, ay2 = _rel_to_abs(x2, y2)
-        pyautogui.moveTo(ax1, ay1, duration=0.1)
-        pyautogui.dragTo(ax2, ay2, duration=0.4, button="left")
-        return {"ok": True}
+        mod = _KEY_ALIASES.get(modifier.lower(), modifier.lower()) if modifier else ""
+        if mod:
+            pyautogui.keyDown(mod)
+        try:
+            pyautogui.moveTo(ax1, ay1, duration=0.1)
+            pyautogui.dragTo(ax2, ay2, duration=0.4, button="left")
+        finally:
+            if mod:
+                try:
+                    pyautogui.keyUp(mod)
+                except Exception:
+                    pass
+        return {"ok": True, "modifier": mod or None}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -82,6 +93,8 @@ def _clipboard_procs():
     kernel32.GlobalLock.restype = ctypes.c_void_p
     kernel32.GlobalUnlock.argtypes = [ctypes.c_void_p]
     kernel32.GlobalFree.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalSize.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalSize.restype = ctypes.c_size_t
     user32.OpenClipboard.argtypes = [ctypes.c_void_p]
     user32.SetClipboardData.argtypes = [ctypes.c_uint, ctypes.c_void_p]
     user32.SetClipboardData.restype = ctypes.c_void_p
@@ -178,6 +191,93 @@ def clipboard_get() -> dict:
         return {"ok": False, "error": str(e)}
 
 
+def clipboard_set_image(image_b64: str) -> dict:
+    """Положить картинку (PNG base64) в буфер обмена."""
+    import os as _os
+
+    if _os.name != "nt":
+        return {"ok": False, "reason": "error", "error": "только Windows"}
+    try:
+        import base64
+        import ctypes
+        import io
+
+        from PIL import Image  # type: ignore
+
+        kernel32, user32 = _clipboard_procs()
+        img = Image.open(io.BytesIO(base64.b64decode(image_b64))).convert("RGB")
+        buf = io.BytesIO()
+        img.save(buf, format="BMP")
+        dib = buf.getvalue()[14:]  # DIB без BMP-заголовка
+        hmem = kernel32.GlobalAlloc(0x0002, len(dib))
+        if not hmem:
+            return {"ok": False, "reason": "error", "error": "нет памяти"}
+        lock = kernel32.GlobalLock(hmem)
+        if not lock:
+            kernel32.GlobalFree(hmem)
+            return {"ok": False, "reason": "error", "error": "lock failed"}
+        ctypes.memmove(lock, dib, len(dib))
+        kernel32.GlobalUnlock(hmem)
+        if not user32.OpenClipboard(None):
+            kernel32.GlobalFree(hmem)
+            return {"ok": False, "reason": "error", "error": "буфер занят"}
+        try:
+            user32.EmptyClipboard()
+            if not user32.SetClipboardData(8, hmem):  # CF_DIB
+                kernel32.GlobalFree(hmem)
+                return {"ok": False, "reason": "error", "error": "set failed"}
+        finally:
+            user32.CloseClipboard()
+        return {"ok": True, "size": [img.width, img.height]}
+    except Exception as e:
+        return {"ok": False, "reason": "error", "error": str(e)}
+
+
+def clipboard_get_image(max_width: int = 1280) -> dict:
+    """Забрать картинку из буфера обмена -> PNG base64."""
+    import os as _os
+
+    if _os.name != "nt":
+        return {"ok": False, "reason": "error", "error": "только Windows"}
+    try:
+        import base64
+        import ctypes
+        import io
+        import struct
+
+        from PIL import Image  # type: ignore
+
+        kernel32, user32 = _clipboard_procs()
+        if not user32.OpenClipboard(None):
+            return {"ok": False, "reason": "error", "error": "буфер занят"}
+        try:
+            hmem = user32.GetClipboardData(8)  # CF_DIB
+            if not hmem:
+                return {"ok": True, "image_b64": None, "note": "в буфере нет картинки"}
+            lock = kernel32.GlobalLock(hmem)
+            if not lock:
+                return {"ok": False, "reason": "error", "error": "lock failed"}
+            try:
+                size = kernel32.GlobalSize(hmem)
+                dib = ctypes.string_at(lock, size)
+            finally:
+                kernel32.GlobalUnlock(hmem)
+        finally:
+            user32.CloseClipboard()
+        # DIB -> BMP: собираем заголовок
+        bf_size = 14 + len(dib)
+        bmp = struct.pack("<2sIHHI", b"BM", bf_size, 0, 0, 14) + dib
+        img = Image.open(io.BytesIO(bmp)).convert("RGB")
+        if img.width > max_width:
+            img = img.resize((max_width, int(img.height * max_width / img.width)))
+        out = io.BytesIO()
+        img.save(out, format="PNG")
+        return {"ok": True, "image_b64": base64.b64encode(out.getvalue()).decode("ascii"),
+                "size": [img.width, img.height]}
+    except Exception as e:
+        return {"ok": False, "reason": "error", "error": str(e)}
+
+
 def sleep(seconds: float = 1.0) -> dict:
     """Пауза чтобы дождаться загрузки (макс 30 сек)."""
     try:
@@ -229,7 +329,42 @@ def press_key(keys: list) -> dict:
         return {"ok": False, "error": str(e)}
 
 
-def mouse_double_click(x: int, y: int) -> dict:
+def key_down(key: str) -> dict:
+    """Зажать клавишу (shift-выделение, игры, хоткеи). Пару закрывает key_up."""
+    try:
+        import pyautogui  # type: ignore
+    except ImportError:
+        return {"ok": False, "reason": "missing_dep", "error": "нет pyautogui"}
+    try:
+        k = _KEY_ALIASES.get(key.lower(), key.lower())
+        pyautogui.keyDown(k)
+        return {"ok": True, "key": k, "held": True}
+    except Exception as e:
+        return {"ok": False, "reason": "error", "error": str(e)}
+
+
+def key_up(key: str) -> dict:
+    """Отпустить клавишу, зажатую через key_down."""
+    try:
+        import pyautogui  # type: ignore
+    except ImportError:
+        return {"ok": False, "reason": "missing_dep", "error": "нет pyautogui"}
+    try:
+        k = _KEY_ALIASES.get(key.lower(), key.lower())
+        pyautogui.keyUp(k)
+        return {"ok": True, "key": k, "held": False}
+    except Exception as e:
+        return {"ok": False, "reason": "error", "error": str(e)}
+
+
+def mouse_right_click(x: int, y: int) -> dict:
+    """Правый клик (контекстное меню). Координаты 0-1000."""
+    return mouse_click(x, y, "right")
+
+
+def mouse_middle_click(x: int, y: int) -> dict:
+    """Средний клик. Координаты 0-1000."""
+    return mouse_click(x, y, "middle")
     """Двойной клик. Координаты 0-1000."""
     try:
         import pyautogui  # type: ignore

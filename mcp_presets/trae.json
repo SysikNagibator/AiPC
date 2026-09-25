@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "aipc": {
+      "command": "C:\\Program Files\\AiPC\\aipc.exe",
+      "args": [
+        "mcp"
+      ]
+    }
+  }
+}

@@ -137,26 +137,52 @@ def _home() -> Path:
     return Path(os.path.expanduser("~"))
 
 
-def ide_config_paths() -> list[tuple[str, Path, Path | None]]:
-    """(имя IDE, путь к конфигу, only_if). Пишем только mcpServers.aipc, остальное не трогаем."""
+def ide_config_paths() -> list[tuple[str, Path, Path | None, str]]:
+    """(имя IDE, путь к конфигу, only_if, writer).
+
+    writer: mcpServers | opencode | zed | vscode-mcp | continue-yaml | codex-toml.
+    only_if: писать только если путь существует (не плодим мусор чужим IDE).
+    """
     home = _home()
     appdata = Path(os.environ.get("APPDATA", str(home / "AppData" / "Roaming")))
+    userprofile = Path(os.environ.get("USERPROFILE", str(home)))
     main_antigravity = home / ".gemini" / "config" / "mcp_config.json"
     main_cursor = home / ".cursor" / "mcp.json"
     main_vscode = appdata / "Code" / "User" / "mcp_settings.json"
     gemini_settings = home / ".gemini" / "settings.json"
     claude_code_state = home / ".claude.json"
     roo_dir = appdata / "Code" / "User" / "globalStorage" / "rooveterinaryinc.roo-cline"
+    cline_settings = (appdata / "Code" / "User" / "globalStorage" / "saoudrizwan.claude-dev"
+                      / "settings" / "cline_mcp_settings.json")
+    vscode_settings = appdata / "Code" / "User" / "settings.json"
+    codex_config = userprofile / ".codex" / "config.toml"
+    opencode_config = home / ".config" / "opencode" / "opencode.json"
+    zed_settings = home / ".config" / "zed" / "settings.json"
+    windsurf_marker = userprofile / ".codeium"
+    continue_dir = home / ".continue"
+    kiro_marker = home / ".kiro"
+    trae_marker = appdata / "Trae"
+    amazonq_marker = home / ".aws" / "amazonq"
     return [
-        ("Antigravity", main_antigravity, None),
-        ("Antigravity-alt", home / ".gemini" / "antigravity" / "mcp_config.json", main_antigravity),
-        ("Cursor", main_cursor, None),
-        ("Cursor-alt", appdata / "Cursor" / "User" / "mcp.json", main_cursor),
-        ("VSCode-Cline", main_vscode, None),
-        ("VSCode-Roo", roo_dir / "settings" / "mcp_settings.json", roo_dir),
-        ("GeminiCLI", gemini_settings, gemini_settings),
-        ("ClaudeCode", claude_code_state, claude_code_state),
-        ("ClaudeDesktop", appdata / "Claude" / "claude_desktop_config.json", None),
+        ("Antigravity", main_antigravity, None, "mcpServers"),
+        ("Antigravity-alt", home / ".gemini" / "antigravity" / "mcp_config.json", main_antigravity, "mcpServers"),
+        ("Cursor", main_cursor, None, "mcpServers"),
+        ("Cursor-alt", appdata / "Cursor" / "User" / "mcp.json", main_cursor, "mcpServers"),
+        ("VSCode-Cline", main_vscode, None, "mcpServers"),
+        ("Cline-ext", cline_settings, roo_dir.parent, "mcpServers"),
+        ("VSCode-Roo", roo_dir / "settings" / "mcp_settings.json", roo_dir, "mcpServers"),
+        ("VSCode-Copilot", vscode_settings, vscode_settings, "vscode-mcp"),
+        ("GeminiCLI", gemini_settings, gemini_settings, "mcpServers"),
+        ("ClaudeCode", claude_code_state, claude_code_state, "mcpServers"),
+        ("ClaudeDesktop", appdata / "Claude" / "claude_desktop_config.json", None, "mcpServers"),
+        ("OpenCode", opencode_config, opencode_config, "opencode"),
+        ("CodexCLI", codex_config, codex_config, "codex-toml"),
+        ("Zed", zed_settings, zed_settings, "zed"),
+        ("Windsurf", userprofile / ".codeium" / "windsurf" / "mcp_config.json", windsurf_marker, "mcpServers"),
+        ("Continue", continue_dir / "mcpServers" / "aipc.yaml", continue_dir, "continue-yaml"),
+        ("Kiro", home / ".kiro" / "settings" / "mcp.json", kiro_marker, "mcpServers"),
+        ("Trae", appdata / "Trae" / "User" / "mcp.json", trae_marker, "mcpServers"),
+        ("AmazonQ", home / ".aws" / "amazonq" / "mcp.json", amazonq_marker, "mcpServers"),
     ]
 
 
@@ -172,28 +198,105 @@ def mcp_server_entry() -> tuple[str, list[str]]:
     return sys.executable, ["-m", "aipc", "mcp"]
 
 
-def merge_mcp_file(path: Path, command: str, args: list[str]) -> tuple[bool, str]:
-    """Аккуратно дописать aipc в mcpServers. Бэкап .bak. Возвращает (ok, msg)."""
-    entry = {"command": command, "args": args}
+def _load_json(path: Path) -> tuple[dict, bool]:
+    """Прочитать JSON-конфиг. Возвращает (data, existed)."""
+    if path.exists():
+        try:
+            bak = path.with_suffix(path.suffix + ".bak")
+            if not bak.exists():
+                shutil.copy2(path, bak)
+            return json.loads(path.read_text(encoding="utf-8") or "{}"), True
+        except Exception:
+            return {}, True
+    return {}, False
+
+
+def _save_json(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def merge_mcp_file(path: Path, command: str, args: list[str], writer: str = "mcpServers") -> tuple[bool, str]:
+    """Аккуратно дописать aipc в конфиг IDE. Бэкап .bak. Возвращает (ok, msg)."""
+    try:
+        data, existed = _load_json(path)
+        if writer == "mcpServers":
+            entry = {"command": command, "args": args}
+            servers = data.get("mcpServers")
+            if not isinstance(servers, dict):
+                servers = {}
+                data["mcpServers"] = servers
+            if servers.get("aipc") == entry:
+                return True, f"{path}: уже настроено"
+            servers["aipc"] = entry
+        elif writer == "opencode":
+            # opencode.json: {"mcp": {"aipc": {"type": "local", "command": [...], "enabled": true}}}
+            entry = {"type": "local", "command": [command] + args, "enabled": True}
+            mcp = data.get("mcp")
+            if not isinstance(mcp, dict):
+                mcp = {}
+                data["mcp"] = mcp
+            if mcp.get("aipc") == entry:
+                return True, f"{path}: уже настроено"
+            mcp["aipc"] = entry
+        elif writer == "zed":
+            # Zed settings.json: {"context_servers": {"aipc": {"command": ..., "args": [...]}}}
+            entry = {"command": command, "args": args}
+            cs = data.get("context_servers")
+            if not isinstance(cs, dict):
+                cs = {}
+                data["context_servers"] = cs
+            if cs.get("aipc") == entry:
+                return True, f"{path}: уже настроено"
+            cs["aipc"] = entry
+        elif writer == "vscode-mcp":
+            # VS Code native (Copilot): {"mcp": {"servers": {"aipc": {...}}}}
+            entry = {"command": command, "args": args}
+            mcp = data.get("mcp")
+            if not isinstance(mcp, dict):
+                mcp = {}
+                data["mcp"] = mcp
+            servers = mcp.get("servers")
+            if not isinstance(servers, dict):
+                servers = {}
+                mcp["servers"] = servers
+            if servers.get("aipc") == entry:
+                return True, f"{path}: уже настроено"
+            servers["aipc"] = entry
+        else:
+            return False, f"неизвестный writer: {writer}"
+        _save_json(path, data)
+        return True, f"{path}: прописано" + ("" if existed else " (новый файл)")
+    except Exception as e:
+        return False, f"{path}: {e}"
+
+
+def _write_continue_yaml(path: Path, command: str, args: list[str]) -> tuple[bool, str]:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        data: dict = {}
         if path.exists():
-            try:
-                bak = path.with_suffix(path.suffix + ".bak")
-                if not bak.exists():
-                    shutil.copy2(path, bak)
-                data = json.loads(path.read_text(encoding="utf-8") or "{}")
-            except Exception:
-                data = {}
-        servers = data.get("mcpServers")
-        if not isinstance(servers, dict):
-            servers = {}
-            data["mcpServers"] = servers
-        if servers.get("aipc") == entry:
-            return True, f"{path}: уже настроено"
-        servers["aipc"] = entry
-        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+            return True, f"{path}: уже настроено (проверь вручную)"
+        text = (f"name: AiPC\nversion: 1.0.0\nschema: v1\n"
+                f"command: {command}\nargs:\n" + "".join(f"  - {a}\n" for a in args))
+        path.write_text(text, encoding="utf-8")
+        return True, f"{path}: прописано"
+    except Exception as e:
+        return False, f"{path}: {e}"
+
+
+def _append_codex_toml(path: Path, command: str, args: list[str]) -> tuple[bool, str]:
+    """Дописать секцию [mcp_servers.aipc] в config.toml Codex (только append, файл не парсим)."""
+    try:
+        existing = path.read_text(encoding="utf-8") if path.exists() else ""
+        if "[mcp_servers.aipc]" in existing:
+            return True, f"{path}: уже настроено (проверь вручную)"
+        esc = command.replace("\\", "\\\\").replace('"', '\\"')
+        q = chr(34)
+        args_s = ", ".join(q + a.replace("\\", "\\\\").replace('"', '\\"') + q for a in args)
+        block = f"\n[mcp_servers.aipc]\ncommand = \"{esc}\"\nargs = [{args_s}]\n"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as f:
+            f.write(block)
         return True, f"{path}: прописано"
     except Exception as e:
         return False, f"{path}: {e}"
@@ -204,11 +307,19 @@ def configure_all_ides(command: str | None = None, args: list[str] | None = None
     if command is None or args is None:
         command, args = mcp_server_entry()
     report: list[tuple[str, bool, str]] = []
-    for name, path, only_if in ide_config_paths():
+    entries = ide_config_paths()
+    # Слепок ДО записи: alt-пути не должны видеть файлы, созданные нами же в этом проходе
+    pre = {name: (only_if.exists() if only_if is not None else True) for name, _, only_if, _ in entries}
+    for name, path, only_if, writer in entries:
         try:
-            if only_if is not None and not only_if.exists():
+            if not pre.get(name, True):
                 continue
-            ok, msg = merge_mcp_file(path, command, args)
+            if writer == "continue-yaml":
+                ok, msg = _write_continue_yaml(path, command, args)
+            elif writer == "codex-toml":
+                ok, msg = _append_codex_toml(path, command, args)
+            else:
+                ok, msg = merge_mcp_file(path, command, args, writer)
             report.append((name, ok, msg))
         except Exception as e:
             report.append((name, False, str(e)))

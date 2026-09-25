@@ -46,3 +46,20 @@ def check_path_allowed(path: str) -> tuple[bool, str]:
 
 def is_auto() -> bool:
     return load_config().get("mode") == "auto"
+
+
+def load_mode() -> str:
+    return str(load_config().get("mode", "ask"))
+
+
+# Tools, меняющие состояние: в read-only режиме сервер их режет до вызова.
+READONLY_MUTATING = frozenset({
+    "mouse_move", "mouse_click", "mouse_drag", "mouse_double_click",
+    "mouse_right_click", "mouse_middle_click", "scroll",
+    "type_text", "press_key", "key_down", "key_up",
+    "open_app", "window_focus", "window_manage",
+    "fs_write", "fs_delete", "fs_move", "fs_mkdir",
+    "run_cmd", "ssh_exec",
+    "browser_goto", "browser_close_tab", "browser_eval",
+    "clipboard_set", "clipboard_set_image", "download_file",
+})

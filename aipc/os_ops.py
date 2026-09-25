@@ -4,43 +4,203 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from .policy import check_cmd_allowed, check_path_allowed
+from .policy import check_cmd_allowed, check_path_allowed, load_mode
 
 
 def fs_list(path: str) -> dict:
     ok, err = check_path_allowed(path)
     if not ok:
-        return {"ok": False, "error": err}
+        return {"ok": False, "reason": "denied", "error": err}
     try:
         p = Path(path).expanduser()
+        if not p.exists():
+            return {"ok": False, "reason": "not_found", "error": f"нет пути: {path}"}
         items = [{"name": x.name, "is_dir": x.is_dir()} for x in p.iterdir()]
         return {"ok": True, "path": str(p), "items": items[:200]}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "reason": "error", "error": str(e)}
 
 
-def fs_read(path: str, limit: int = 20000) -> dict:
+def fs_read(path: str, limit: int = 20000, offset: int = 0) -> dict:
     ok, err = check_path_allowed(path)
     if not ok:
-        return {"ok": False, "error": err}
+        return {"ok": False, "reason": "denied", "error": err}
     try:
-        data = Path(path).expanduser().read_text(encoding="utf-8", errors="replace")
-        return {"ok": True, "text": data[:limit]}
+        raw = Path(path).expanduser().read_bytes()
+        if b"\x00" in raw[:8000]:
+            return {"ok": False, "reason": "binary",
+                    "error": f"бинарный файл ({len(raw)} байт), текст не читаю"}
+        data = raw.decode("utf-8", errors="replace")
+        if len(data) > 500000:
+            return {"ok": False, "reason": "too_big",
+                    "error": f"файл {len(data)} символов, читай кусками через offset/limit"}
+        off = max(0, offset)
+        return {"ok": True, "text": data[off:off + max(100, limit)], "size": len(data), "offset": off}
+    except FileNotFoundError:
+        return {"ok": False, "reason": "not_found", "error": f"нет файла: {path}"}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "reason": "error", "error": str(e)}
 
 
-def fs_write(path: str, text: str) -> dict:
+def fs_write(path: str, text: str, backup: bool = False) -> dict:
     ok, err = check_path_allowed(path)
     if not ok:
-        return {"ok": False, "error": err}
+        return {"ok": False, "reason": "denied", "error": err}
+    if load_mode() == "read-only":
+        return {"ok": False, "reason": "denied", "error": "read-only режим: запись запрещена"}
     try:
+        import os as _os
+        import tempfile as _tf
+
         p = Path(path).expanduser()
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(text, encoding="utf-8")
+        bak = None
+        if backup and p.exists():
+            bak = str(p) + ".bak"
+            Path(bak).write_bytes(p.read_bytes())
+        # Атомарно: временный файл + replace
+        fd, tmp = _tf.mkstemp(dir=str(p.parent), prefix=".aipc-")
+        try:
+            with _os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(text)
+            Path(tmp).replace(p)
+        except BaseException:
+            try:
+                Path(tmp).unlink(missing_ok=True)
+            except Exception:
+                pass
+            raise
+        return {"ok": True, "path": str(p), "backup": bak}
+    except Exception as e:
+        return {"ok": False, "reason": "error", "error": str(e)}
+
+
+def fs_stat(path: str) -> dict:
+    ok, err = check_path_allowed(path)
+    if not ok:
+        return {"ok": False, "reason": "denied", "error": err}
+    try:
+        import datetime as _dt
+
+        p = Path(path).expanduser()
+        if not p.exists():
+            return {"ok": False, "reason": "not_found", "error": f"нет пути: {path}"}
+        st = p.stat()
+        return {"ok": True, "path": str(p), "is_dir": p.is_dir(), "size": st.st_size,
+                "mtime": _dt.datetime.fromtimestamp(st.st_mtime).isoformat(timespec="seconds")}
+    except Exception as e:
+        return {"ok": False, "reason": "error", "error": str(e)}
+
+
+def fs_mkdir(path: str) -> dict:
+    ok, err = check_path_allowed(path)
+    if not ok:
+        return {"ok": False, "reason": "denied", "error": err}
+    if load_mode() == "read-only":
+        return {"ok": False, "reason": "denied", "error": "read-only режим: создание запрещено"}
+    try:
+        p = Path(path).expanduser()
+        p.mkdir(parents=True, exist_ok=True)
         return {"ok": True, "path": str(p)}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "reason": "error", "error": str(e)}
+
+
+def fs_delete(path: str, recursive: bool = False) -> dict:
+    """Удалить файл/пустую папку. Непустую папку — только recursive=true."""
+    ok, err = check_path_allowed(path)
+    if not ok:
+        return {"ok": False, "reason": "denied", "error": err}
+    if load_mode() == "read-only":
+        return {"ok": False, "reason": "denied", "error": "read-only режим: удаление запрещено"}
+    try:
+        import shutil as _sh
+
+        p = Path(path).expanduser()
+        if not p.exists():
+            return {"ok": False, "reason": "not_found", "error": f"нет пути: {path}"}
+        if len(p.parts) <= 2:
+            return {"ok": False, "reason": "denied", "error": "корень диска не удаляю"}
+        if p.is_dir():
+            items = list(p.iterdir())
+            if items and not recursive:
+                return {"ok": False, "reason": "not_empty",
+                        "error": f"папка не пуста ({len(items)}), нужен recursive=true"}
+            _sh.rmtree(p) if items else p.rmdir()
+        else:
+            p.unlink()
+        return {"ok": True, "deleted": str(p)}
+    except Exception as e:
+        return {"ok": False, "reason": "error", "error": str(e)}
+
+
+def fs_move(src: str, dst: str) -> dict:
+    """Переместить/переименовать."""
+    for path in (src, dst):
+        ok, err = check_path_allowed(path)
+        if not ok:
+            return {"ok": False, "reason": "denied", "error": err}
+    if load_mode() == "read-only":
+        return {"ok": False, "reason": "denied", "error": "read-only режим: перемещение запрещено"}
+    try:
+        s, d = Path(src).expanduser(), Path(dst).expanduser()
+        if not s.exists():
+            return {"ok": False, "reason": "not_found", "error": f"нет пути: {src}"}
+        d.parent.mkdir(parents=True, exist_ok=True)
+        s.replace(d)
+        return {"ok": True, "src": str(s), "dst": str(d)}
+    except Exception as e:
+        return {"ok": False, "reason": "error", "error": str(e)}
+
+
+def fs_find(pattern: str, path: str = ".", max_results: int = 50, max_seconds: int = 20) -> dict:
+    """Рекурсивный поиск файлов по glob-паттерну (*.log). С бюджетом времени и пропуском мусора."""
+    ok, err = check_path_allowed(path)
+    if not ok:
+        return {"ok": False, "reason": "denied", "error": err}
+    try:
+        import fnmatch as _fn
+        import os as _os
+        import time as _time
+
+        base = Path(path).expanduser()
+        if not base.is_dir():
+            return {"ok": False, "reason": "not_found", "error": f"нет папки: {path}"}
+        skip = {"$Recycle.Bin", "System Volume Information", "node_modules", ".git",
+                "__pycache__", ".venv", "venv"}
+        deadline = _time.monotonic() + max(3, min(120, max_seconds))
+        limit = max(1, max_results)
+        out: list[str] = []
+        timed_out = False
+        stack = [base]
+        while stack:
+            if _time.monotonic() > deadline:
+                timed_out = True
+                break
+            cur = stack.pop()
+            try:
+                with _os.scandir(cur) as it:
+                    entries = list(it)
+            except OSError:
+                continue
+            for e in entries:
+                try:
+                    if e.name in skip:
+                        continue
+                    if e.is_dir(follow_symlinks=False):
+                        stack.append(Path(e.path))
+                    elif _fn.fnmatch(e.name, pattern):
+                        out.append(e.path)
+                        if len(out) >= limit:
+                            break
+                except OSError:
+                    continue
+            if len(out) >= limit:
+                break
+        return {"ok": True, "found": out, "count": len(out),
+                "truncated": len(out) >= limit or timed_out, "timed_out": timed_out}
+    except Exception as e:
+        return {"ok": False, "reason": "error", "error": str(e)}
 
 
 def _decode_output(data: bytes) -> str:
@@ -59,24 +219,48 @@ def run_cmd(cmd: str, cwd: str | None = None, timeout: int = 60) -> dict:
         return {"ok": False, "error": err}
     try:
         r = subprocess.run(cmd, shell=True, cwd=cwd or None, capture_output=True, text=False, timeout=timeout)
-        out = _decode_output(r.stdout or b"")
-        err_text = _decode_output(r.stderr or b"")
-        if err_text:
-            out += "\n" + err_text
-        return {"ok": r.returncode == 0, "code": r.returncode, "output": out[-20000:]}
+        stdout = _decode_output(r.stdout or b"")
+        stderr = _decode_output(r.stderr or b"")
+        return {"ok": r.returncode == 0, "code": r.returncode,
+                "stdout": stdout[-20000:], "stderr": stderr[-8000:],
+                "output": (stdout + (("\n" + stderr) if stderr else ""))[-20000:]}
     except subprocess.TimeoutExpired:
-        return {"ok": False, "error": f"timeout {timeout}s"}
+        return {"ok": False, "reason": "timeout", "error": f"timeout {timeout}s"}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "reason": "error", "error": str(e)}
 
 
 def process_list(limit: int = 50) -> dict:
     try:
         import psutil  # type: ignore
     except ImportError:
-        return {"ok": False, "error": "нет psutil. pip install psutil"}
+        return {"ok": False, "reason": "missing_dep", "error": "нет psutil. pip install psutil"}
     try:
         procs = [{"pid": p.info.get("pid"), "name": p.info.get("name")} for p in psutil.process_iter(["pid", "name"])]
         return {"ok": True, "processes": procs[:limit]}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "reason": "error", "error": str(e)}
+
+
+def process_find(name: str, limit: int = 20) -> dict:
+    """Найти процессы по подстроке имени (вместо разбора всего списка)."""
+    res = process_list(500)
+    if not res.get("ok"):
+        return res
+    found = [p for p in res["processes"] if name.lower() in str(p.get("name") or "").lower()][:max(1, limit)]
+    return {"ok": True, "found": found, "count": len(found)}
+
+
+def wait_for_process(name: str, timeout: float = 30.0) -> dict:
+    """Ждать появления процесса по имени."""
+    import time as _time
+
+    deadline = _time.monotonic() + max(1.0, timeout)
+    while True:
+        res = process_find(name, 5)
+        if res.get("ok") and res.get("found"):
+            return {"ok": True, "processes": res["found"]}
+        if _time.monotonic() >= deadline:
+            return {"ok": False, "reason": "timeout",
+                    "error": f"процесс не появился за {timeout}с: {name}"}
+        _time.sleep(1.0)

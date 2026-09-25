@@ -21,8 +21,9 @@ def web_search_pc(query: str, limit: int = 5) -> dict:
 
 
 def download_file(url: str, path: str, timeout: int = 120, max_mb: int = 200) -> dict:
-    """Скачать файл по URL (без браузера). Лимит размера."""
+    """Скачать файл по URL (без браузера). Если path папка — имя возьмётся из URL."""
     from pathlib import Path
+    from urllib.parse import urlparse
     from urllib.request import Request, urlopen
 
     from .policy import check_path_allowed
@@ -36,6 +37,9 @@ def download_file(url: str, path: str, timeout: int = 120, max_mb: int = 200) ->
         size = 0
         limit = max_mb * 1024 * 1024
         p = Path(path).expanduser()
+        if not p.suffix and (not p.exists() or p.is_dir()):
+            name = Path(urlparse(url).path).name or "download.bin"
+            p = p / name
         p.parent.mkdir(parents=True, exist_ok=True)
         req = Request(url, headers={"User-Agent": "AiPC-downloader"})
         with urlopen(req, timeout=timeout) as r, p.open("wb") as f:
