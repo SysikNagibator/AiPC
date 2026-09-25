@@ -18,12 +18,12 @@ VSVersionInfo(
           [
             StringStruct('CompanyName', 'S1sTeam'),
             StringStruct('FileDescription', 'AiPC от Sysik — доступ агента к ПК'),
-            StringStruct('FileVersion', '1.0.4.9'),
+            StringStruct('FileVersion', '1.0.4.10'),
             StringStruct('InternalName', 'aipc'),
             StringStruct('LegalCopyright', 'Copyright (c) 2026 Sysik (MIT)'),
             StringStruct('OriginalFilename', 'aipc.exe'),
             StringStruct('ProductName', 'AiPC'),
-            StringStruct('ProductVersion', '1.0.4.9'),
+            StringStruct('ProductVersion', '1.0.4.10'),
           ]
         )
       ]

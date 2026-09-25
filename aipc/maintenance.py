@@ -175,15 +175,33 @@ def doctor() -> list[tuple[str, bool, str]]:
 
         import json
 
-        for name, path, only_if in ide_config_paths():
+        for name, path, only_if, writer in ide_config_paths():
             if only_if is not None and not only_if.exists():
                 continue
             if not path.exists():
                 out.append((f"IDE {name}", False, "конфиг не найден"))
                 continue
             try:
-                data = json.loads(path.read_text(encoding="utf-8") or "{}")
-                entry = (data.get("mcpServers") or {}).get("aipc")
+                from .installer import _strip_jsonc
+
+                text = path.read_text(encoding="utf-8") or ""
+                if writer == "codex-toml":
+                    out.append((f"IDE {name}", "[mcp_servers.aipc]" in text,
+                                "aipc прописан" if "[mcp_servers.aipc]" in text else "нет секции aipc"))
+                    continue
+                if writer == "continue-yaml":
+                    out.append((f"IDE {name}", "AiPC" in text,
+                                "aipc прописан" if "AiPC" in text else "нет записи aipc"))
+                    continue
+                data = json.loads(_strip_jsonc(text))
+                if writer == "opencode":
+                    entry = (data.get("mcp") or {}).get("aipc")
+                elif writer == "zed":
+                    entry = (data.get("context_servers") or {}).get("aipc")
+                elif writer == "vscode-mcp":
+                    entry = ((data.get("mcp") or {}).get("servers") or {}).get("aipc")
+                else:
+                    entry = (data.get("mcpServers") or {}).get("aipc")
                 if not entry:
                     out.append((f"IDE {name}", False, "нет записи aipc"))
                 elif not Path(str(entry.get("command", ""))).exists() and str(entry.get("command", "")).lower() != "aipc":
@@ -191,7 +209,7 @@ def doctor() -> list[tuple[str, bool, str]]:
                 else:
                     out.append((f"IDE {name}", True, "aipc прописан"))
             except Exception as e:
-                out.append((f"IDE {name}", False, f"битый JSON: {e}"))
+                out.append((f"IDE {name}", False, f"битый конфиг: {e}"))
     except Exception as e:
         out.append(("IDE", False, str(e)))
     try:

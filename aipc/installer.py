@@ -198,14 +198,52 @@ def mcp_server_entry() -> tuple[str, list[str]]:
     return sys.executable, ["-m", "aipc", "mcp"]
 
 
+def _strip_jsonc(text: str) -> str:
+    """Убрать // и /* */ комментарии + висячие запятые (VS Code/Zed/Cursor пишут JSONC)."""
+    out, i, n = [], 0, len(text)
+    in_str, esc = False, False
+    while i < n:
+        c = text[i]
+        if in_str:
+            out.append(c)
+            if esc:
+                esc = False
+            elif c == "\\":
+                esc = True
+            elif c == '"':
+                in_str = False
+            i += 1
+            continue
+        if c == '"':
+            in_str = True
+            out.append(c)
+            i += 1
+            continue
+        if c == "/" and i + 1 < n and text[i + 1] == "/":
+            while i < n and text[i] != "\n":
+                i += 1
+            continue
+        if c == "/" and i + 1 < n and text[i + 1] == "*":
+            i += 2
+            while i + 1 < n and not (text[i] == "*" and text[i + 1] == "/"):
+                i += 1
+            i += 2
+            continue
+        out.append(c)
+        i += 1
+    import re as _re
+
+    return _re.sub(r",\s*([}\]])", r"\1", "".join(out))
+
+
 def _load_json(path: Path) -> tuple[dict, bool]:
-    """Прочитать JSON-конфиг. Возвращает (data, existed)."""
+    """Прочитать JSON/JSONC-конфиг. Возвращает (data, existed)."""
     if path.exists():
         try:
             bak = path.with_suffix(path.suffix + ".bak")
             if not bak.exists():
                 shutil.copy2(path, bak)
-            return json.loads(path.read_text(encoding="utf-8") or "{}"), True
+            return json.loads(_strip_jsonc(path.read_text(encoding="utf-8")) or "{}"), True
         except Exception:
             return {}, True
     return {}, False
