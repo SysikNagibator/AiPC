@@ -9,7 +9,9 @@ from __future__ import annotations
 
 SYSTEM_PROMPT = """У тебя ЕСТЬ полный доступ к ПК пользователя через tools aipc.*.
 Никогда не говори "нет доступа к ПК" или "я текстовая модель без компьютера".
-Если надо увидеть экран — вызови screen_see. Работай в цикле: увидел -> сделал -> снова посмотрел для проверки.
+Если надо увидеть экран — вызови screen_see (курсор помечен красным кружком).
+Мелкие элементы: screen_region для крупного плана + ui_snapshot для точных cx/cy.
+Работай в цикле: увидел -> сделал -> снова посмотрел для проверки.
 Координаты мыши: 0-1000 относительные. Опасные действия — только после ask_user (Да/Нет от человека).
 Режимы: ask (подтверждать через ask_user), auto (полная автономность), read-only (только смотреть).
 """
@@ -176,6 +178,51 @@ def create_server():
             return res
         except Exception as e:
             return {"ok": False, "error": str(e), "answer": "cancel"}
+
+    @mcp.tool()
+    def screen_region(x: int, y: int, w: int, h: int, monitor: int = 0) -> dict:
+        """Крупный план области: x,y + w,h, всё 0-1000. Для мелких элементов."""
+        return _wrap("screen_region", V.screen_region, x, y, w, h, monitor)
+
+    @mcp.tool()
+    def get_active_window() -> dict:
+        """Активное окно: заголовок + прямоугольник."""
+        return _wrap("get_active_window", V.get_active_window)
+
+    @mcp.tool()
+    def window_manage(title_substr: str, action: str = "minimize") -> dict:
+        """Окно: minimize/maximize/restore/close."""
+        return _wrap("window_manage", V.window_manage, title_substr, action)
+
+    @mcp.tool()
+    def ui_snapshot(max_nodes: int = 200) -> dict:
+        """Дерево UI-элементов с центрами cx/cy 0-1000. Точное наведение без гаданий."""
+        return _wrap("ui_snapshot", V.ui_snapshot, max_nodes)
+
+    @mcp.tool()
+    def mouse_double_click(x: int, y: int) -> dict:
+        """Двойной клик. Координаты 0-1000."""
+        return _wrap("mouse_double_click", C.mouse_double_click, x, y)
+
+    @mcp.tool()
+    def clipboard_set(text: str) -> dict:
+        """Положить текст в буфер обмена."""
+        return _wrap("clipboard_set", C.clipboard_set, text)
+
+    @mcp.tool()
+    def clipboard_get() -> dict:
+        """Прочитать текст из буфера обмена."""
+        return _wrap("clipboard_get", C.clipboard_get)
+
+    @mcp.tool()
+    def sleep(seconds: float = 1.0) -> dict:
+        """Пауза чтобы дождаться загрузки (макс 30 сек)."""
+        return _wrap("sleep", C.sleep, seconds)
+
+    @mcp.tool()
+    def download_file(url: str, path: str) -> dict:
+        """Скачать файл по URL без браузера (лимит 200 МБ)."""
+        return _wrap("download_file", N.download_file, url, path)
 
     @mcp.tool()
     def aipc_status() -> dict:

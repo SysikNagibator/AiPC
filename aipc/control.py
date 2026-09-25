@@ -70,8 +70,28 @@ def scroll(dy: int = -500) -> dict:
         return {"ok": False, "error": str(e)}
 
 
-def _type_via_clipboard(text: str) -> bool:
-    """Печать любого юникода (кириллица!) через буфер обмена + Ctrl+V. Только Windows."""
+def _clipboard_procs():
+    """user32/kernel32 с правильными прототипами (без argtypes хендлы режутся до 32 бит)."""
+    import ctypes
+
+    kernel32 = ctypes.windll.kernel32
+    user32 = ctypes.windll.user32
+    kernel32.GlobalAlloc.argtypes = [ctypes.c_uint, ctypes.c_size_t]
+    kernel32.GlobalAlloc.restype = ctypes.c_void_p
+    kernel32.GlobalLock.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalLock.restype = ctypes.c_void_p
+    kernel32.GlobalUnlock.argtypes = [ctypes.c_void_p]
+    kernel32.GlobalFree.argtypes = [ctypes.c_void_p]
+    user32.OpenClipboard.argtypes = [ctypes.c_void_p]
+    user32.SetClipboardData.argtypes = [ctypes.c_uint, ctypes.c_void_p]
+    user32.SetClipboardData.restype = ctypes.c_void_p
+    user32.GetClipboardData.argtypes = [ctypes.c_uint]
+    user32.GetClipboardData.restype = ctypes.c_void_p
+    return kernel32, user32
+
+
+def _set_clipboard(text: str) -> bool:
+    """Положить юникод-текст в буфер обмена. Только Windows."""
     import os as _os
 
     if _os.name != "nt":
@@ -79,10 +99,9 @@ def _type_via_clipboard(text: str) -> bool:
     try:
         import ctypes
 
+        kernel32, user32 = _clipboard_procs()
         GMEM_MOVEABLE = 0x0002
         CF_UNICODETEXT = 13
-        kernel32 = ctypes.windll.kernel32
-        user32 = ctypes.windll.user32
         data = text + "\0"
         buf = ctypes.create_unicode_buffer(data)
         size = ctypes.sizeof(buf)
@@ -90,6 +109,9 @@ def _type_via_clipboard(text: str) -> bool:
         if not hmem:
             return False
         lock = kernel32.GlobalLock(hmem)
+        if not lock:
+            kernel32.GlobalFree(hmem)
+            return False
         ctypes.memmove(lock, buf, size)
         kernel32.GlobalUnlock(hmem)
         if not user32.OpenClipboard(None):
@@ -97,15 +119,75 @@ def _type_via_clipboard(text: str) -> bool:
             return False
         try:
             user32.EmptyClipboard()
-            user32.SetClipboardData(CF_UNICODETEXT, hmem)
+            if not user32.SetClipboardData(CF_UNICODETEXT, hmem):
+                kernel32.GlobalFree(hmem)
+                return False
         finally:
             user32.CloseClipboard()
+        return True
+    except Exception:
+        return False
+
+
+def _type_via_clipboard(text: str) -> bool:
+    """Печать любого юникода (кириллица!) через буфер обмена + Ctrl+V. Только Windows."""
+    if not _set_clipboard(text):
+        return False
+    try:
         import pyautogui  # type: ignore
 
         pyautogui.hotkey("ctrl", "v")
         return True
     except Exception:
         return False
+
+
+def clipboard_set(text: str) -> dict:
+    """Положить текст в буфер обмена."""
+    if _set_clipboard(text):
+        return {"ok": True, "len": len(text)}
+    return {"ok": False, "error": "буфер недоступен (только Windows)"}
+
+
+def clipboard_get() -> dict:
+    """Прочитать текст из буфера обмена."""
+    import os as _os
+
+    if _os.name != "nt":
+        return {"ok": False, "error": "только Windows"}
+    try:
+        import ctypes
+
+        CF_UNICODETEXT = 13
+        kernel32, user32 = _clipboard_procs()
+        if not user32.OpenClipboard(None):
+            return {"ok": False, "error": "буфер занят"}
+        try:
+            hmem = user32.GetClipboardData(CF_UNICODETEXT)
+            if not hmem:
+                return {"ok": True, "text": ""}
+            lock = kernel32.GlobalLock(hmem)
+            try:
+                text = ctypes.wstring_at(lock)
+            finally:
+                kernel32.GlobalUnlock(hmem)
+            return {"ok": True, "text": (text or "")[:20000]}
+        finally:
+            user32.CloseClipboard()
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+def sleep(seconds: float = 1.0) -> dict:
+    """Пауза чтобы дождаться загрузки (макс 30 сек)."""
+    try:
+        s = max(0.5, min(30.0, float(seconds)))
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "seconds числом 0.5-30"}
+    import time as _time
+
+    _time.sleep(s)
+    return {"ok": True, "slept": s}
 
 
 def type_text(text: str) -> dict:
@@ -143,6 +225,23 @@ def press_key(keys: list) -> dict:
         else:
             pyautogui.hotkey(*norm)
         return {"ok": True, "keys": norm}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+def mouse_double_click(x: int, y: int) -> dict:
+    """Двойной клик. Координаты 0-1000."""
+    try:
+        import pyautogui  # type: ignore
+    except ImportError:
+        return {"ok": False, "error": "нет pyautogui. pip install pyautogui"}
+    try:
+        ax, ay = _rel_to_abs(x, y)
+        pyautogui.doubleClick(ax, ay)
+        import time as _time
+
+        _time.sleep(0.3)
+        return {"ok": True, "x": ax, "y": ay}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 

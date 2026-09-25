@@ -32,7 +32,7 @@
 
 | Шаг | Что сделать |
 |-----|-------------|
-| 1 | Скачай **`aipc.exe`** из раздела [Releases](https://github.com/S1sTeam/AiPC/releases) или по прямой ссылке ([зеркало v1.0.4](https://files.catbox.moe/djoq2q.zip), распаковать) и запусти двойным кликом |
+| 1 | Скачай **`aipc.exe`** из раздела [Releases](https://github.com/S1sTeam/AiPC/releases) или по прямой ссылке ([зеркало v1.0.4.3](https://files.catbox.moe/5yiq9w.zip), распаковать) и запусти двойным кликом |
 | 2 | При первом запуске он **сам всё настроит**: один раз попросит права админа (UAC) → скопирует себя в `C:\Program Files\AiPC\` → добавит команду `aipc` в PATH → пропишет себя в MCP-конфиги всех найденных IDE (с бэкапом `.bak`) → откроет меню |
 | 3 | В своей IDE обнови MCP-серверы (Refresh / перезапуск) и напиши агенту задачу обычным языком |
 
@@ -101,24 +101,31 @@ AiPC прописывает себя сам, вручную ничего коп�
 
 ---
 
-## Что умеет модель: 22 tools
+## Что умеет модель: 31 tool
 
 ### Зрение (монитор)
 
 | Tool | Описание |
 |------|----------|
-| `screen_see` | Скриншот монитора (JPEG base64). Вызывается перед каждым кликом и после — для проверки |
+| `screen_see` | Скриншот монитора, курсор помечен красным кружком. Вызывать перед кликом и после |
+| `screen_region` | Крупный план области (x,y + w,h, всё 0–1000) — для мелких элементов |
+| `ui_snapshot` | Дерево UI-элементов с центрами cx/cy 0–1000 — точное наведение без гаданий |
 | `windows_list` | Список открытых окон |
 | `window_focus` | Фокус окна по подстроке заголовка |
+| `window_manage` | Окно: minimize/maximize/restore/close |
+| `get_active_window` | Активное окно: заголовок + прямоугольник |
 
 ### Управление
 
 | Tool | Описание |
 |------|----------|
 | `mouse_move` / `mouse_click` / `mouse_drag` | Мышь. Координаты **0–1000 относительные** |
+| `mouse_double_click` | Двойной клик |
 | `scroll` | Прокрутка |
-| `type_text` | Печать текста как с клавиатуры |
+| `type_text` | Печать текста как с клавиатуры (кириллица через буфер — не роняет) |
 | `press_key` | Клавиши, например `["ctrl", "t"]` |
+| `clipboard_set` / `clipboard_get` | Буфер обмена: положить / прочитать текст |
+| `sleep` | Пауза чтобы дождаться загрузки (до 30 сек) |
 | `open_app` | Открыть приложение: `notepad`, `calc`, `chrome` или путь к `.exe` |
 
 ### Твой браузер (не пустой headless)
@@ -133,8 +140,9 @@ AiPC прописывает себя сам, вручную ничего коп�
 | Tool | Описание |
 |------|----------|
 | `fs_list` / `fs_read` / `fs_write` | Файлы (с защитой deny-путей) |
-| `run_cmd` | Команда терминала (с deny-листом опасных команд) |
+| `run_cmd` | Команда терминала (с deny-листом опасных команд, русский вывод не ломается) |
 | `process_list` | Список процессов |
+| `download_file` | Скачать файл по URL без браузера (лимит 200 МБ) |
 | `web_search_pc` | Веб-поиск со стороны ПК — дополняет нативный поиск модели |
 | `ssh_exec` | SSH-команда (хосты, ключи и порты — в `~/.aipc/config.yaml`) |
 | `notify_user` | Показать сообщение человеку (всплывающее окно, не блокирует) |
@@ -173,15 +181,17 @@ AiPC прописывает себя сам, вручную ничего коп�
 ```
 AiPC/
   aipc/
-    __main__.py      # точка входа команды aipc (меню/mcp/status/selftest/setup/install)
+    __main__.py      # точка входа команды aipc (меню/mcp/status/selftest/setup/install/update/doctor/kill)
     menu.py          # движок меню: W/S+стрелки+Enter, только rich.Panel
-    logo.py          # логотип, палитра, безопасные символы
-    server.py        # MCP-сервер (mcp<2 FastMCP + mcp>=2 MCPServer) + SYSTEM_PROMPT
-    vision.py        # screen_see / windows_list / window_focus (mss)
-    control.py       # мышь/клавиатура/запуск (pyautogui)
-    os_ops.py        # файлы/терминал/процессы
+    logo.py          # логотип, палитра, версия из кода
+    server.py        # MCP-сервер (mcp<2 FastMCP + mcp>=2 MCPServer) + SYSTEM_PROMPT + prompt
+    vision.py        # скриншоты/регионы/курсор, окна, UI-дерево (mss + uiautomation)
+    control.py       # мышь/клавиатура/буфер/запуск (pyautogui + ctypes)
+    os_ops.py        # файлы/терминал с OEM-декодом/процессы
     browser.py       # вкладки Chrome через CDP
-    net.py           # web_search_pc (ddgs) + ssh_exec (paramiko)
+    net.py           # web_search_pc (ddgs) + ssh_exec (paramiko) + download_file
+    notify.py        # попапы человеку: notify_user + ask_user
+    maintenance.py   # update/doctor/kill
     installer.py     # самоустановка в Program Files + PATH + MCP во все IDE
     setup_wizard.py  # мастер: режим/IDE/браузер/SSH
     selftest.py      # проверка работы

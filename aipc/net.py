@@ -20,6 +20,42 @@ def web_search_pc(query: str, limit: int = 5) -> dict:
         return {"ok": False, "error": str(e)}
 
 
+def download_file(url: str, path: str, timeout: int = 120, max_mb: int = 200) -> dict:
+    """Скачать файл по URL (без браузера). Лимит размера."""
+    from pathlib import Path
+    from urllib.request import Request, urlopen
+
+    from .policy import check_path_allowed
+
+    ok, err = check_path_allowed(path)
+    if not ok:
+        return {"ok": False, "error": err}
+    if not url.lower().startswith(("http://", "https://")):
+        return {"ok": False, "error": "только http(s) URL"}
+    try:
+        size = 0
+        limit = max_mb * 1024 * 1024
+        p = Path(path).expanduser()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        req = Request(url, headers={"User-Agent": "AiPC-downloader"})
+        with urlopen(req, timeout=timeout) as r, p.open("wb") as f:
+            while True:
+                chunk = r.read(1024 * 256)
+                if not chunk:
+                    break
+                size += len(chunk)
+                if size > limit:
+                    try:
+                        p.unlink()
+                    except Exception:
+                        pass
+                    return {"ok": False, "error": f"файл больше лимита {max_mb} МБ"}
+                f.write(chunk)
+        return {"ok": True, "path": str(p), "bytes": size}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
 def ssh_exec(host: str, username: str, cmd: str, key_path: str | None = None, password: str | None = None, port: int = 22, timeout: int = 30) -> dict:
     try:
         import paramiko  # type: ignore

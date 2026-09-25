@@ -1,73 +1,39 @@
 {
   "name": "aipc",
-  "version": "1.0.4",
+  "version": "1.0.4.3",
   "openapi_fallback": "для IDE без MCP: те же tools через HTTP (план Фазы 6)",
   "tools": [
     {
-      "name": "screen_see",
+      "name": "ask_user",
       "args": [
-        "monitor",
-        "max_width"
+        "question"
       ]
     },
     {
-      "name": "windows_list",
+      "name": "browser_goto",
       "args": [
-        "limit"
+        "url"
       ]
     },
     {
-      "name": "window_focus",
-      "args": [
-        "title_substr"
-      ]
+      "name": "browser_tabs",
+      "args": []
     },
     {
-      "name": "mouse_move",
-      "args": [
-        "x",
-        "y"
-      ]
+      "name": "clipboard_get",
+      "args": []
     },
     {
-      "name": "mouse_click",
-      "args": [
-        "x",
-        "y",
-        "button"
-      ]
-    },
-    {
-      "name": "mouse_drag",
-      "args": [
-        "x1",
-        "y1",
-        "x2",
-        "y2"
-      ]
-    },
-    {
-      "name": "scroll",
-      "args": [
-        "dy"
-      ]
-    },
-    {
-      "name": "type_text",
+      "name": "clipboard_set",
       "args": [
         "text"
       ]
     },
     {
-      "name": "press_key",
+      "name": "download_file",
       "args": [
-        "keys"
-      ]
-    },
-    {
-      "name": "open_app",
-      "args": [
-        "name_or_path"
+        "url",
+        "path"
       ]
     },
     {
@@ -90,10 +56,56 @@
       ]
     },
     {
-      "name": "run_cmd",
+      "name": "get_active_window",
+      "args": []
+    },
+    {
+      "name": "mouse_click",
       "args": [
-        "cmd",
-        "cwd"
+        "x",
+        "y",
+        "button"
+      ]
+    },
+    {
+      "name": "mouse_double_click",
+      "args": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "name": "mouse_drag",
+      "args": [
+        "x1",
+        "y1",
+        "x2",
+        "y2"
+      ]
+    },
+    {
+      "name": "mouse_move",
+      "args": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "name": "notify_user",
+      "args": [
+        "text"
+      ]
+    },
+    {
+      "name": "open_app",
+      "args": [
+        "name_or_path"
+      ]
+    },
+    {
+      "name": "press_key",
+      "args": [
+        "keys"
       ]
     },
     {
@@ -103,20 +115,39 @@
       ]
     },
     {
-      "name": "browser_tabs",
-      "args": []
-    },
-    {
-      "name": "browser_goto",
+      "name": "run_cmd",
       "args": [
-        "url"
+        "cmd",
+        "cwd"
       ]
     },
     {
-      "name": "web_search_pc",
+      "name": "screen_region",
       "args": [
-        "query",
-        "limit"
+        "x",
+        "y",
+        "w",
+        "h",
+        "monitor"
+      ]
+    },
+    {
+      "name": "screen_see",
+      "args": [
+        "monitor",
+        "max_width"
+      ]
+    },
+    {
+      "name": "scroll",
+      "args": [
+        "dy"
+      ]
+    },
+    {
+      "name": "sleep",
+      "args": [
+        "seconds"
       ]
     },
     {
@@ -128,15 +159,41 @@
       ]
     },
     {
-      "name": "notify_user",
+      "name": "type_text",
       "args": [
         "text"
       ]
     },
     {
-      "name": "ask_user",
+      "name": "ui_snapshot",
       "args": [
-        "question"
+        "max_nodes"
+      ]
+    },
+    {
+      "name": "web_search_pc",
+      "args": [
+        "query",
+        "limit"
+      ]
+    },
+    {
+      "name": "window_focus",
+      "args": [
+        "title_substr"
+      ]
+    },
+    {
+      "name": "window_manage",
+      "args": [
+        "title_substr",
+        "action"
+      ]
+    },
+    {
+      "name": "windows_list",
+      "args": [
+        "limit"
       ]
     },
     {
