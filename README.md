@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <b>RU README: <a href="README_RU.md">RU Ver..md</a></b> · Skills: <a href="SKILL.md">SKILL.md</a> · IDE matrix: <a href="docs/IDES.md">docs/IDES.md</a>
+  <b>RU README: <a href="README_RU.md">RUssian version</a></b> · Skills: <a href="SKILL.md">SKILL.md</a> · IDE matrix: <a href="docs/IDES.md">docs/IDES.md</a>
 </p>
 
 ---
