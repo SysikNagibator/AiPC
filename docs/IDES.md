@@ -1,4 +1,4 @@
-> **Russian version:** [docs/IDES_RU.md](IDES_RU.md)
+> **Russian version:** [IDES_RU.md](IDES_RU.md)
 
 # AiPC × IDE — support matrix
 
