@@ -12,6 +12,14 @@ def _encode(img, monitor: int):
     return {"ok": True, "image_b64": b64, "width": img.width, "height": img.height, "monitor": monitor}
 
 
+def _encode_bytes(img) -> bytes:
+    import io
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=80)
+    return buf.getvalue()
+
+
 def _draw_cursor(img, full_w: int, full_h: int) -> None:
     """Красный кружок там где курсор (на скриншоте его иначе не видно)."""
     try:
@@ -28,60 +36,55 @@ def _draw_cursor(img, full_w: int, full_h: int) -> None:
         pass
 
 
+def _render_full(monitor: int = 0, max_width: int = 1280, cursor: bool = True):
+    """Скриншот -> PIL.Image. Бросает исключения наверх (зависимости/захват)."""
+    import mss  # type: ignore
+    from PIL import Image  # type: ignore
+
+    with mss.mss() as sct:
+        mons = sct.monitors
+        idx = monitor + 1 if (monitor + 1) < len(mons) else 1
+        shot = sct.grab(mons[idx])
+        img = Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")
+        full_w, full_h = img.width, img.height
+        if img.width > max_width:
+            h = int(img.height * max_width / img.width)
+            img = img.resize((max_width, h))
+        if cursor:
+            _draw_cursor(img, full_w, full_h)
+        return img
+
+
 def screen_see(monitor: int = 0, max_width: int = 1280, cursor: bool = True) -> dict:
     """Скриншот монитора -> base64 JPEG + размер. Глаза модели."""
     try:
-        import mss  # type: ignore
-        from PIL import Image  # type: ignore
+        return _encode(_render_full(monitor, max_width, cursor), monitor)
     except ImportError as e:
         return {"ok": False, "error": f"нет зависимостей экрана: {e}. pip install mss pillow"}
-
-    try:
-        with mss.mss() as sct:
-            mons = sct.monitors
-            idx = monitor + 1 if (monitor + 1) < len(mons) else 1
-            shot = sct.grab(mons[idx])
-            img = Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")
-            full_w, full_h = img.width, img.height
-            if img.width > max_width:
-                h = int(img.height * max_width / img.width)
-                img = img.resize((max_width, h))
-            if cursor:
-                _draw_cursor(img, full_w, full_h)
-            return _encode(img, monitor)
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+def _fit_width(img, max_width: int):
+    if img.width > max_width:
+        img = img.resize((max_width, int(img.height * max_width / img.width)))
+    return img
 
 
 def screen_region(x: int, y: int, w: int, h: int, monitor: int = 0, max_width: int = 800) -> dict:
     """Крупный план области: x,y левый верх + w,h размер, всё 0-1000 относительных."""
     try:
-        import mss  # type: ignore
-        from PIL import Image  # type: ignore
+        from PIL import Image  # type: ignore  # noqa (проверка зависимости)
+        import mss  # type: ignore  # noqa
     except ImportError as e:
         return {"ok": False, "error": f"нет зависимостей экрана: {e}. pip install mss pillow"}
 
-    def clamp(v: int) -> int:
-        return max(0, min(1000, v))
-
-    x, y, w, h = clamp(x), clamp(y), max(10, w), max(10, h)
+    x, y = max(0, min(1000, x)), max(0, min(1000, y))
     try:
-        with mss.mss() as sct:
-            mons = sct.monitors
-            idx = monitor + 1 if (monitor + 1) < len(mons) else 1
-            mon = mons[idx]
-            mw, mh = mon["width"], mon["height"]
-            left = mon["left"] + int(x / 1000 * mw)
-            top = mon["top"] + int(y / 1000 * mh)
-            width = min(int(w / 1000 * mw), mw - (left - mon["left"]))
-            height = min(int(h / 1000 * mh), mh - (top - mon["top"]))
-            shot = sct.grab({"left": left, "top": top, "width": width, "height": height})
-            img = Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")
-            if img.width > max_width:
-                img = img.resize((max_width, int(img.height * max_width / img.width)))
-            res = _encode(img, monitor)
-            res["region"] = {"x": x, "y": y, "w": w, "h": h}
-            return res
+        img = _fit_width(_grab_region(monitor, x, y, w, h), max_width)
+        res = _encode(img, monitor)
+        res["region"] = {"x": x, "y": y, "w": w, "h": h}
+        return res
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -367,8 +370,8 @@ def _collect_ui(monitor: int = 0, role: str = "", name_contains: str = "", max_n
                     offscreen = bool(c.IsOffscreen)
                 except Exception:
                     offscreen = False
-                nodes.append({"type": ctype, "name": cname[:120], "cx": int(cx), "cy": int(cy),
-                              "offscreen": offscreen})
+                nodes.append({"t": ctype, "n": cname[:80], "x": int(cx), "y": int(cy),
+                              "o": offscreen})
                 walk(c, depth + 1)
             except Exception:
                 continue
@@ -381,7 +384,7 @@ def _collect_ui(monitor: int = 0, role: str = "", name_contains: str = "", max_n
 
 
 def ui_find(text: str, role: str = "", monitor: int = 0, max_nodes: int = 200, scope: str = "active") -> dict:
-    """Найти элементы по тексту (нечётко) + опционально роли. Возвращает совпадения с cx/cy."""
+    """Найти элементы по тексту (нечётко) + опционально роли. Возвращает совпадения с x/y."""
     nodes, err = _collect_ui(monitor, role, text, max_nodes, scope)
     if err and not nodes:
         return {"ok": False, "reason": "missing_dep" if "uiautomation" in err else "error", "error": err}

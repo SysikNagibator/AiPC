@@ -10,7 +10,7 @@ from __future__ import annotations
 SYSTEM_PROMPT = """У тебя ЕСТЬ полный доступ к ПК пользователя через tools aipc.*.
 Никогда не говори "нет доступа к ПК" или "я текстовая модель без компьютера".
 Если надо увидеть экран — вызови screen_see (курсор помечен красным кружком).
-Мелкие элементы: screen_region для крупного плана + ui_snapshot для точных cx/cy.
+Мелкие элементы: screen_region для крупного плана + ui_snapshot для точных x/y.
 Работай в цикле: увидел -> сделал -> снова посмотрел для проверки.
 Координаты мыши: 0-1000 относительные. Опасные действия — только после ask_user (Да/Нет от человека).
 Печать: ТОЛЬКО через focus_type (фокус с проверкой + печать атомарно). Большой текст type_text режет сам на куски.
@@ -68,11 +68,47 @@ def create_server():
     from . import sysinfo as S
     from .audit import tail_log
     from .config import load_config
+    from .policy import load_mode
+
+    try:
+        from mcp.server.mcpserver import Image as _SDKImage  # SDK v2
+    except ImportError:
+        from mcp.server.fastmcp.utilities.types import Image as _SDKImage  # SDK v1
+
+    def _image_result(tool: str, meta: dict, img_bytes: bytes, fmt: str):
+        """Мета JSON + нативный image-блок (дешевле base64-текста на порядок)."""
+        from .audit import log_event
+
+        log_event(tool, _safe_params(meta), ok=True)
+        return [_SDKImage(data=img_bytes, format=fmt), meta]
+
+    def _image_denied(tool: str):
+        from .audit import log_event
+
+        res = {"ok": False, "reason": "denied", "error": "read-only режим: изменения запрещены"}
+        log_event(tool, {}, ok=False, note="read-only gate")
+        return res
 
     @mcp.tool()
-    def screen_see(monitor: int = 0, max_width: int = 1280) -> dict:
-        """Скриншот монитора. Глаза модели. Всегда вызывай перед кликом и после."""
-        return _wrap("screen_see", V.screen_see, monitor, max_width)
+    def screen_see(monitor: int = 0, max_width: int = 1280, raw: bool = False):
+        """Скриншот image-блоком. Смотри до и после каждого клика."""
+        if load_mode() == "read-only":
+            return _image_denied("screen_see")
+        try:
+            img = V._render_full(monitor, max_width)
+        except ImportError as e:
+            return {"ok": False, "error": f"нет зависимостей: {e}"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+        meta = {"ok": True, "width": img.width, "height": img.height, "monitor": monitor}
+        if raw:
+            from .audit import log_event
+
+            log_event("screen_see", _safe_params(meta), ok=True)
+            import base64
+
+            return {**meta, "image_b64": base64.b64encode(V._encode_bytes(img)).decode()}
+        return _image_result("screen_see", meta, V._encode_bytes(img), "jpeg")
 
     @mcp.tool()
     def windows_list(limit: int = 50) -> dict:
@@ -213,9 +249,26 @@ def create_server():
             return {"ok": False, "error": str(e), "answer": "cancel"}
 
     @mcp.tool()
-    def screen_region(x: int, y: int, w: int, h: int, monitor: int = 0) -> dict:
-        """Крупный план области: x,y + w,h, всё 0-1000. Для мелких элементов."""
-        return _wrap("screen_region", V.screen_region, x, y, w, h, monitor)
+    def screen_region(x: int, y: int, w: int, h: int, monitor: int = 0, raw: bool = False):
+        """Крупный план области image-блоком: x,y + w,h, всё 0-1000. Для мелких элементов."""
+        if load_mode() == "read-only":
+            return _image_denied("screen_region")
+        try:
+            img = V._fit_width(V._grab_region(monitor, x, y, w, h), 800)
+        except ImportError as e:
+            return {"ok": False, "error": f"нет зависимостей: {e}"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+        meta = {"ok": True, "width": img.width, "height": img.height,
+                "region": {"x": x, "y": y, "w": w, "h": h}}
+        if raw:
+            from .audit import log_event
+
+            log_event("screen_region", _safe_params(meta), ok=True)
+            import base64
+
+            return {**meta, "image_b64": base64.b64encode(V._encode_bytes(img)).decode()}
+        return _image_result("screen_region", meta, V._encode_bytes(img), "jpeg")
 
     @mcp.tool()
     def get_active_window() -> dict:
@@ -230,7 +283,7 @@ def create_server():
     @mcp.tool()
     def ui_snapshot(max_nodes: int = 200, monitor: int = 0, role: str = "", name_contains: str = "",
                     scope: str = "active") -> dict:
-        """Дерево UI: scope=active (окно впереди, быстро) или desktop. Центры cx/cy 0-1000."""
+        """Дерево UI: scope=active (окно впереди, быстро) или desktop. Центры x/y 0-1000."""
         return _wrap("ui_snapshot", V.ui_snapshot, max_nodes, monitor, role, name_contains, scope)
 
     @mcp.tool()
@@ -285,7 +338,7 @@ def create_server():
 
     @mcp.tool()
     def ui_find(text: str, role: str = "") -> dict:
-        """Найти элементы по тексту, вернуть совпадения с cx/cy. Не парси дерево сам."""
+        """Найти элементы по тексту, вернуть совпадения с x/y. Не парси дерево сам."""
         return _wrap("ui_find", V.ui_find, text, role)
 
     @mcp.tool()
@@ -329,9 +382,23 @@ def create_server():
         return _wrap("clipboard_set_image", C.clipboard_set_image, image_b64)
 
     @mcp.tool()
-    def clipboard_get_image() -> dict:
-        """Забрать картинку из буфера -> PNG base64."""
-        return _wrap("clipboard_get_image", C.clipboard_get_image)
+    def clipboard_get_image(raw: bool = False):
+        """Картинка из буфера image-блоком (или base64 при raw=true)."""
+        if load_mode() == "read-only":
+            return _image_denied("clipboard_get_image")
+        res = C.clipboard_get_image()
+        if not res.get("ok") or not res.get("image_b64"):
+            return res
+        import base64
+
+        raw_bytes = base64.b64decode(res["image_b64"])
+        meta = {"ok": True, "size": res.get("size")}
+        if raw:
+            from .audit import log_event
+
+            log_event("clipboard_get_image", _safe_params(meta), ok=True)
+            return {**meta, "image_b64": res["image_b64"]}
+        return _image_result("clipboard_get_image", meta, raw_bytes, "png")
 
     @mcp.tool()
     def fs_find(pattern: str, path: str = ".", max_results: int = 50) -> dict:

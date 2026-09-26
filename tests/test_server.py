@@ -65,3 +65,28 @@ def test_audit_truncation():
 
     p = _safe_params({"text": "x" * 5000})
     assert len(p["text"]) < 600
+
+
+def test_encode_bytes():
+    from PIL import Image
+
+    from aipc.vision import _encode_bytes
+
+    img = Image.new("RGB", (32, 20), (10, 20, 30))
+    raw = _encode_bytes(img)
+    assert raw[:2] == b"\xff\xd8"  # JPEG magic
+
+
+def test_compact_ui_shape():
+    import os
+
+    import pytest
+
+    if os.name != "nt":
+        pytest.skip("UI tree needs Windows")
+    from aipc.vision import _collect_ui
+
+    nodes, err = _collect_ui(0, "", "", 15, "active")
+    assert err == "" or nodes
+    if nodes:
+        assert set(nodes[0].keys()) == {"t", "n", "x", "y", "o"}
