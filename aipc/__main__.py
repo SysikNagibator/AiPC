@@ -84,23 +84,41 @@ def cmd_menu() -> int:
         if idx == "quit" or idx == 8:
             _menu_log("menu exit")
             return 0
-        if idx == 0:
-            A.start_core()
-        elif idx == 1:
-            A.stop_core()
-        elif idx == 2:
-            T.show_selftest()
-        elif idx == 3:
-            A.show_doctor()
-        elif idx == 4:
-            if A.show_update_check():
-                return 0
-        elif idx == 5:
-            W.setup_menu()
-        elif idx == 6:
-            service_menu()
-        elif idx == 7:
-            A.show_logs()
+        try:
+            _run_action(idx, A, T, W)
+        except Exception:
+            import traceback
+
+            _menu_log("action crash, see console")
+            print("\n!!! Ошибка экшена (ничего не потеряно, меню живое):")
+            print(traceback.format_exc()[-1500:])
+            try:
+                input("\nEnter чтобы вернуться в меню... ")
+            except Exception:
+                pass
+
+
+def _run_action(idx, A, T, W) -> None:
+    """Диспетчер пунктов меню. Исключения ловит вызыватель (видимый трейс + пауза)."""
+    if idx == 0:
+        A.start_core()
+    elif idx == 1:
+        A.stop_core()
+    elif idx == 2:
+        T.show_selftest()
+    elif idx == 3:
+        A.show_doctor()
+    elif idx == 4:
+        if A.show_update_check():
+            import sys as _sys
+
+            _sys.exit(0)
+    elif idx == 5:
+        W.setup_menu()
+    elif idx == 6:
+        service_menu()
+    elif idx == 7:
+        A.show_logs()
 
 
 def service_menu() -> None:

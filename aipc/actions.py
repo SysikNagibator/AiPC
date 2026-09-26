@@ -180,12 +180,23 @@ def show_doctor() -> None:
     from .logo import MARK_OK, MARK_ERR, safe_mark
     from .maintenance import doctor
 
+    console.print(Align.center(Panel("Собираю диагностику...", title=" Doctor ", width=WIDTH,
+                                     border_style=THEME["border"])))
+    try:
+        results = doctor()
+    except Exception as e:
+        import traceback
+
+        console.print(Align.center(Panel(f"Doctor упал: {e}\n{traceback.format_exc()[-800:]}",
+                                         title=" Ошибка ", width=WIDTH, border_style="red")))
+        input("\nEnter чтобы вернуться... ")
+        return
     ok_m, err_m = safe_mark(MARK_OK), safe_mark(MARK_ERR)
     table = Table(show_header=False, box=None, padding=(0, 1), expand=True)
     table.add_column("check")
     table.add_column("res")
     all_ok = True
-    for name, ok, note in doctor():
+    for name, ok, note in results:
         all_ok = all_ok and ok
         mark = ok_m if ok else err_m
         style = THEME["ok"] if ok else THEME["err"]
