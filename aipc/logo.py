@@ -12,8 +12,8 @@ LOGO_BLOCK = r"""
 ╚═╝  ╚═╝╚═╝╚═╝      ╚═════╝
 """.rstrip("\n")
 
-LOGO_COMPACT = f"[ AiPC :: от Sysik v{__version__} ]"
-LOGO_SUB = f"от Sysik v{__version__}"
+LOGO_COMPACT = f"[ AiPC :: SYSIK v{__version__} ]"
+LOGO_SUB = "SYSIK"
 
 # Палитра: зелёная тема (видно и на чёрном, и на белом фоне cmd)
 THEME = {

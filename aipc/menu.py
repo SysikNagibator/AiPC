@@ -200,7 +200,8 @@ def _status_part() -> str:
 
 
 def build_menu_panel(title: str, items: List[MenuItem], selected: int,
-                     footer: str, frame: int = 0, flash: bool = False):
+                     footer: str, frame: int = 0, flash: bool = False,
+                     show_title: bool = True):
     """Чистая сборка панели (без console) — тестируемо, правая стенка всегда ровная."""
     from rich.align import Align
     from rich.console import Group
@@ -225,23 +226,34 @@ def build_menu_panel(title: str, items: List[MenuItem], selected: int,
             row = Text.assemble(bullet, (it.label, THEME["normal_fg"]))
         table.add_row(row)
     rule = Text("─" * 44, style="dim")
-    body = Group(Align.center(_gradient(title)), Align.center(rule), table)
+    if show_title:
+        body = Group(Align.center(_gradient(title)), Align.center(rule), table)
+    else:
+        body = table
     return Panel(body, subtitle=f" {footer} ", width=MENU_WIDTH,
                  border_style=THEME["border"], padding=(1, 1))
 
 
+def _logo_width() -> int:
+    try:
+        return max(len(line) for line in LOGO_BLOCK.splitlines() if line.strip())
+    except Exception:
+        return 50
+
+
 def build_screen(title: str, items: List[MenuItem], selected: int, footer: str,
-                 dot: str, frame: int = 0, flash: bool = False):
+                 dot: str, frame: int = 0, flash: bool = False, show_title: bool = True):
     """Весь экран меню одним объектом — для Live (без мерцания) и для печати."""
     from rich.align import Align
     from rich.console import Group
     from rich.text import Text
 
     logo = Text(LOGO_BLOCK, style=THEME["logo"])
-    sub = Text(LOGO_SUB, style=THEME["logo_sub"])
+    # SYSIK сдвигаем вправо: стартуем чуть правее центра логотипа
+    sub = Text(" " * (_logo_width() // 2 + 2) + LOGO_SUB, style=THEME["logo_sub"])
     counter = Text(f"Пункт {selected + 1}/{len(items)} {dot} 1-{len(items)} быстрый выбор", style="dim")
     return Group(Align.center(logo), Align.center(sub), Text(""),
-                 Align.center(build_menu_panel(title, items, selected, footer, frame, flash)),
+                 Align.center(build_menu_panel(title, items, selected, footer, frame, flash, show_title)),
                  Align.center(counter))
 
 
@@ -278,9 +290,10 @@ def splash(console, duration: float = 0.45) -> None:
 
 
 def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None,
-             splash_first: bool = False) -> int | str:
+             splash_first: bool = False, show_title: bool = True) -> int | str:
     """Рисует меню шириной MENU_WIDTH через rich.Panel. Возвращает index или 'quit'.
 
+    show_title=False убирает дубль-заголовок из панели (для главного меню с лого).
     Никаких ручных '│' + пробелы — только Panel/Table, иначе правая стенка едет.
     """
     _ensure_utf8()
@@ -305,7 +318,7 @@ def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None,
     footer = hint or f"W/S + стрелки {dot} Enter выбор {dot} Q выход  |  {_status_part()}"
 
     def render(frame: int = 0, flash: bool = False):
-        console.print(build_screen(title, items, selected, footer, dot, frame, flash))
+        console.print(build_screen(title, items, selected, footer, dot, frame, flash, show_title))
 
     if splash_first:
         splash(console)
@@ -321,7 +334,7 @@ def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None,
         try:
             # refresh=True обязателен: update() сам НЕ перерисовывает,
             # а auto_refresh выключен против мерцания
-            live.update(build_screen(title, items, selected, footer, dot, f, flash), refresh=True)
+            live.update(build_screen(title, items, selected, footer, dot, f, flash, show_title), refresh=True)
         except Exception:
             pass
 
@@ -333,7 +346,7 @@ def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None,
     # Никаких фоновых потоков — Live дергаем только отсюда: гонок,
     # мерцания и съеденных клавиш нет. Ввод как в старом меню.
     try:
-        with Live(build_screen(title, items, selected, footer, dot, 0),
+        with Live(build_screen(title, items, selected, footer, dot, 0, show_title=show_title),
                   console=console, screen=True, auto_refresh=False) as live:
             while True:
                 try:

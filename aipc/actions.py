@@ -50,16 +50,47 @@ def show_status() -> None:
     input("\nEnter чтобы вернуться... ")
 
 
-def _launch_core():
-    """Запустить Core, вернуть Popen. Frozen: сам exe + mcp, dev: python -m."""
+def _core_command() -> tuple[list, str | None]:
+    """Команда запуска Core + cwd. Одна на handshake и на фон."""
     from .installer import current_exe, is_frozen
 
     if is_frozen():
-        return subprocess.Popen([str(current_exe()), "mcp"])
-    return subprocess.Popen(
-        [sys.executable, "-m", "aipc", "mcp"],
-        cwd=str(Path(__file__).resolve().parent.parent),
-    )
+        return [str(current_exe()), "mcp"], None
+    return [sys.executable, "-m", "aipc", "mcp"], str(Path(__file__).resolve().parent.parent)
+
+
+def _launch_core():
+    """Запустить Core ОТВЯЗАННО от консоли меню: stdin/stdout/stderr в DEVNULL.
+
+    Иначе MCP-сервер на stdio читает те же нажатия что меню (клавиши пропадают),
+    а протокольные байты мусорят в консоль.
+    """
+    cmd, cwd = _core_command()
+    return subprocess.Popen(cmd, cwd=cwd, stdin=subprocess.DEVNULL,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def handshake_core(timeout: float = 25.0) -> dict:
+    """Проверка как у IDE: спавн Core с пайпами, initialize, tools/list, прибить."""
+    import asyncio
+
+    async def _go():
+        from mcp import ClientSession, StdioServerParameters
+        from mcp.client.stdio import stdio_client
+
+        cmd, cwd = _core_command()
+        params = StdioServerParameters(command=cmd[0], args=cmd[1:], cwd=cwd)
+        async with stdio_client(params) as (read, write):
+            async with ClientSession(read, write) as s:
+                await s.initialize()
+                tools = await s.list_tools()
+                return len(tools.tools)
+
+    try:
+        n = asyncio.run(asyncio.wait_for(_go(), timeout))
+        return {"ok": True, "tools": n}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:300]}
 
 
 def _proc_alive(pid: int) -> bool:
@@ -83,12 +114,20 @@ def start_core() -> None:
     ensure_default_config()
     pid_file = config_dir() / "aipc.pid"
     try:
+        console.print(Align.center(Panel("Проверяю Core как IDE (handshake)...",
+                                         title=" Запустить ", width=WIDTH, border_style=THEME["border"])))
+        hs = handshake_core()
+        if not hs.get("ok"):
+            console.print(Align.center(Panel(f"Core не отвечает: {hs.get('error')}\nСмотри Doctor.",
+                                             title=" Ошибка ", width=WIDTH, border_style="red")))
+            input("\nEnter чтобы вернуться... ")
+            return
         proc = _launch_core()
         pid_file.write_text(str(proc.pid), encoding="utf-8")
         alive = _wait_alive(proc.pid, 3.0)
         if alive:
             console.print(Align.center(Panel(
-                f"AiPC-Core запущен и отвечает.\nPID {proc.pid} | tools: 59 | режим ask",
+                f"AiPC-Core запущен и отвечает.\nPID {proc.pid} | tools: {hs.get('tools')} | режим ask",
                 title=" Запустить ", width=WIDTH, border_style="green")))
         else:
             console.print(Align.center(Panel(

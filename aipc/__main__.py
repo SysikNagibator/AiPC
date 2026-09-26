@@ -75,6 +75,7 @@ def cmd_menu() -> int:
                 MenuItem("Выход", "exit"),
             ],
             splash_first=first,
+            show_title=False,
         )
         first = False
         from .menu import _menu_log
