@@ -1,8 +1,8 @@
 # UTF-8 (сгенерировано tools/gen_version_info.py, не править руками)
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(1, 0, 6, 0),
-    prodvers=(1, 0, 6, 0),
+    filevers=(1, 0, 7, 0),
+    prodvers=(1, 0, 7, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -18,12 +18,12 @@ VSVersionInfo(
           [
             StringStruct('CompanyName', 'S1sTeam'),
             StringStruct('FileDescription', 'AiPC от SYSIK — доступ агента к ПК'),
-            StringStruct('FileVersion', '1.0.6'),
+            StringStruct('FileVersion', '1.0.7'),
             StringStruct('InternalName', 'aipc'),
             StringStruct('LegalCopyright', 'Copyright (c) 2026 SYSIK (MIT)'),
-            StringStruct('OriginalFilename', 'AiPC_Win_1.0.6.exe'),
+            StringStruct('OriginalFilename', 'AiPC_Win_1.0.7.exe'),
             StringStruct('ProductName', 'AiPC'),
-            StringStruct('ProductVersion', '1.0.6'),
+            StringStruct('ProductVersion', '1.0.7'),
           ]
         )
       ]
