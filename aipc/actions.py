@@ -19,7 +19,13 @@ def _rich():
         _ensure_utf8()
     except Exception:
         pass
-    return Console(highlight=False, legacy_windows=False), Panel, Align, MENU_WIDTH, THEME
+    console = Console(highlight=False, legacy_windows=False)
+    # Чистый экран под каждый экшен: прошлые выводы не висят хвостом
+    try:
+        console.clear()
+    except Exception:
+        pass
+    return console, Panel, Align, MENU_WIDTH, THEME
 
 
 def show_status() -> None:

@@ -16,6 +16,10 @@ def choose_mode() -> None:
     from .menu import MenuItem, run_menu
 
     console = Console(highlight=False, legacy_windows=False)
+    try:
+        console.clear()
+    except Exception:
+        pass
     idx = run_menu("Режим работы", [MenuItem("ask — спрашивать (по умолчанию)", "ask"), MenuItem("auto — полная автономность", "auto"), MenuItem("read-only — только смотреть", "ro")])
     if idx == "quit":
         return
@@ -36,6 +40,10 @@ def setup_ide() -> None:
     from .installer import configure_all_ides
 
     console = Console(highlight=False, legacy_windows=False)
+    try:
+        console.clear()
+    except Exception:
+        pass
     lines = []
     for name, ok, msg in configure_all_ides():
         mark = "OK" if ok else "X"
@@ -52,6 +60,10 @@ def setup_browser() -> None:
     from .logo import MENU_WIDTH, THEME
 
     console = Console(highlight=False, legacy_windows=False)
+    try:
+        console.clear()
+    except Exception:
+        pass
     body = (
         "Чтобы модель видела ТВОЙ браузер, а не пустой:\n\n"
         '1. Закрой Chrome\n'
@@ -71,6 +83,10 @@ def setup_ssh() -> None:
     from .logo import MENU_WIDTH, THEME
 
     console = Console(highlight=False, legacy_windows=False)
+    try:
+        console.clear()
+    except Exception:
+        pass
     try:
         host = input("host (напр. 192.168.1.10) [пусто=назад]> ").strip()
         if not host:

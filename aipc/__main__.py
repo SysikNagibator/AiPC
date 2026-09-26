@@ -126,6 +126,10 @@ def service_menu() -> None:
         from .logo import MENU_WIDTH, THEME
 
         console = Console(highlight=False, legacy_windows=False)
+    try:
+        console.clear()
+    except Exception:
+        pass
         if idx == 0:
             from .installer import ensure_installed
 
