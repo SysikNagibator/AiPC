@@ -1,4 +1,4 @@
-"""AiPC от Sysik — полный доступ агента к ПК через MCP + CLI."""
+"""AiPC от SYSIK — полный доступ агента к ПК через MCP + CLI."""
 
-__version__ = "1.0.5"
-__author__ = "Sysik"
+__version__ = "1.0.5.1"
+__author__ = "SYSIK"

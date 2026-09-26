@@ -62,7 +62,7 @@ def cmd_menu() -> int:
     first = True
     while True:
         idx = run_menu(
-            f"AiPC от Sysik v{_ver}",
+            f"AiPC от SYSIK v{_ver}",
             [
                 MenuItem("Запустить AiPC-Core", "run"),
                 MenuItem("Остановить", "stop"),
@@ -127,7 +127,9 @@ def service_menu() -> None:
 
         console = Console(highlight=False, legacy_windows=False)
     try:
-        console.clear()
+        from .menu import clear_screen
+
+        clear_screen()
     except Exception:
         pass
         if idx == 0:

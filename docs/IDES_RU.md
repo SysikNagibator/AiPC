@@ -38,7 +38,7 @@
 | Aider | Положить `mcp_presets/aider.json` рядом / указать `--mcp-servers` (зависит от версии, сверься с `aider --help`) |
 | Goose | Добавить блок из `mcp_presets/goose.yaml` в `~/.config/goose/config.yaml` → `extensions` |
 | Neovim | Плагин mcphub.nvim + содержимое `mcp_presets/nvim.json` в его `servers.json` |
-| Emacs | Пакет mcp.el + команда `C:\Program Files\AiPC\aipc.exe` с args `("mcp")` |
+| Emacs | Пакет mcp.el + команда `C:\Program Files\AiPC\AiPC_Win_1.0.5.1.exe` с args `("mcp")` |
 | OpenSumi | Импорт `mcp_presets/jetbrains.json` (формат mcpServers) в AI-настройки |
 | Theia IDE / Theia AI | Импорт mcpServers-пресета в AI-настройки |
 | LibreChat | Блок `mcpServers` в `librechat.yaml` (пример — `mcp_presets/cursor.json`) |

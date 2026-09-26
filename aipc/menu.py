@@ -257,36 +257,64 @@ def build_screen(title: str, items: List[MenuItem], selected: int, footer: str,
                  Align.center(counter))
 
 
+def clear_screen() -> None:
+    """Жёсткая очистка экрана incl. scrollback.
+
+    rich console.clear() шлёт ANSI \\x1b[2J — в ряде консолей он молча
+    глотается и история копится. cls идёт через WinAPI и чистит всегда.
+    """
+    try:
+        if os.name == "nt":
+            os.system("cls")
+        else:
+            os.system("clear")
+    except Exception:
+        try:
+            from rich.console import Console
+
+            Console().clear()
+        except Exception:
+            pass
+
+
 def splash(console, duration: float = 0.45) -> None:
-    """Быстрый сплэш с градиентом. Любая клавиша пропускает (байты возвращаем в буфер)."""
+    """Быстрый сплэш. Прогресс одной строкой через \\r — не копит кадры даже без clear."""
+    import sys
     import time as _time
 
     from rich.align import Align
 
-    steps = 6
+    console.print(Align.center(_gradient("AiPC от SYSIK")))
+    steps = 10
     t0 = _time.monotonic()
-    for s in range(steps + 1):
-        if os.name == "nt":
-            try:
-                import msvcrt
+    try:
+        for s in range(steps + 1):
+            if os.name == "nt":
+                try:
+                    import msvcrt
 
-                if msvcrt.kbhit():
-                    ch = msvcrt.getch()
-                    if ch in (b"\x00", b"\xe0"):
-                        ch2 = msvcrt.getch()
-                        msvcrt.ungetch(ch2)
-                    msvcrt.ungetch(ch)
-                    break
-            except Exception:
-                pass
-        frac = s / steps
-        bar = "█" * int(frac * 30) + "░" * (30 - int(frac * 30))
-        console.clear()
-        console.print(Align.center(_gradient("AiPC от Sysik")))
-        console.print(Align.center(f"[green]{bar}[/green]"))
-        if _time.monotonic() - t0 >= duration:
-            break
-        _time.sleep(duration / steps)
+                    if msvcrt.kbhit():
+                        ch = msvcrt.getch()
+                        if ch in (b"\x00", b"\xe0"):
+                            ch2 = msvcrt.getch()
+                            msvcrt.ungetch(ch2)
+                        msvcrt.ungetch(ch)
+                        break
+                except Exception:
+                    pass
+            frac = s / steps
+            bar = "█" * int(frac * 30) + "░" * (30 - int(frac * 30))
+            sys.stdout.write(f"\r  {bar} {int(frac * 100)}%")
+            sys.stdout.flush()
+            if _time.monotonic() - t0 >= duration:
+                break
+            _time.sleep(duration / steps)
+    finally:
+        try:
+            sys.stdout.write("\r" + " " * 40 + "\r")
+            sys.stdout.flush()
+        except Exception:
+            pass
 
 
 def run_menu(title: str, items: List[MenuItem], hint: Optional[str] = None,

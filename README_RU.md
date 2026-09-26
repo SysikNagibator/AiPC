@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://files.catbox.moe/e9o2sz.png" alt="AiPC by Sysik">
+  <img src="https://files.catbox.moe/e9o2sz.png" alt="AiPC by SYSIK">
 </p>
 
-<h1 align="center">AiPC by Sysik</h1>
+<h1 align="center">AiPC by SYSIK</h1>
 
 <p align="center">
   <b>Дайте агенту «это» — и у него появится настоящий ПК.</b><br>
@@ -83,7 +83,7 @@
 
 | Шаг | Что делать |
 |------|------------|
-| 1 | Скачайте **`aipc.exe`** из [Releases](https://github.com/S1sTeam/AiPC/releases) и запустите двойным щелчком |
+| 1 | Скачайте **`AiPC_Win_1.0.5.1.exe`** из [Releases](https://github.com/S1sTeam/AiPC/releases) и запустите двойным щелчком |
 | 2 | При первом запуске он **всё настроит сам**: запросит админа один раз (UAC) → скопирует себя в `C:\Program Files\AiPC\` → добавит команду `aipc` в PATH → зарегистрируется в MCP-конфигах всех обнаруженных IDE (сначала бэкап `.bak`) → откроет меню |
 | 3 | В вашей IDE обновите MCP-серверы (Refresh / перезапуск) и дайте агенту задачу на простом языке |
 
@@ -180,7 +180,7 @@ AiPC регистрирует себя при каждом запуске мен
 {
   "mcpServers": {
     "aipc": {
-      "command": "C:\\Program Files\\AiPC\\aipc.exe",
+      "command": "C:\\Program Files\\AiPC\\AiPC_Win_1.0.5.1.exe",
       "args": ["mcp"]
     }
   }
@@ -226,7 +226,7 @@ Replit…) не могут достучаться до `127.0.0.1` — см. р�
 | Команда `aipc` неизвестна | Откройте **новый** cmd (PATH применяется к новым оболочкам); переустановите через `dist\aipc.exe` |
 | Правая стенка меню съезжает | Обновитесь: с 1.0.4.4 кадры рендерятся только через `rich.Panel` фиксированной ширины |
 | Вкладки Chrome не видны | Меню → Настройка → Браузер (добавляет `--remote-debugging-port=9222`), перезапустите Chrome |
-| Старая версия в Program Files | `aipc doctor` подскажет; запустите свежий `dist\aipc.exe` → UAC → обновлено |
+| Старая версия в Program Files | `aipc doctor` подскажет; запустите свежий `dist\AiPC_Win_1.0.5.1.exe` → UAC → обновлено |
 | GitHub страница/API 404 | Наш репозиторий однажды затроттлили эвристики GitHub за злоупотребления; зеркало + процесс апелляции в issues |
 
 ---
@@ -257,7 +257,7 @@ python -m aipc selftest
 tools\build_exe.bat
 ```
 
-Выход: `dist\aipc.exe` (~36 МБ, иконка + publisher version-info) и `dist\AiPC-Setup.exe`.
+Выход: `dist\AiPC_Win_1.0.5.1.exe` (~36 МБ, иконка + publisher version-info) и `dist\AiPC-Setup.exe`.
 Подпись, убирающая синий SmartScreen: см. [docs/SIGNING.md](docs/SIGNING.md) (нужен
 сертификат code-signing: Certum Open Source ~€25/год — самый дешёвый старт).
 
@@ -265,4 +265,4 @@ tools\build_exe.bat
 
 ## Лицензия
 
-MIT. Автор — Sysik. См. [LICENSE](LICENSE).
+MIT. Автор — SYSIK. См. [LICENSE](LICENSE).

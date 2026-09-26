@@ -1,4 +1,4 @@
-# Changelog AiPC от Sysik
+# Changelog AiPC от SYSIK
 
 Формат версий: `1.0.4.x` — патчи поверх стабильной ветки 1.0.4.
 

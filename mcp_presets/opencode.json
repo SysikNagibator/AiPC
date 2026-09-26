@@ -3,7 +3,7 @@
     "aipc": {
       "type": "local",
       "command": [
-        "C:\\Program Files\\AiPC\\aipc.exe",
+        "C:\\Program Files\\AiPC\\AiPC_Win_1.0.5.1.exe",
         "mcp"
       ],
       "enabled": true

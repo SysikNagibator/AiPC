@@ -15,6 +15,9 @@ import time
 from pathlib import Path
 
 
+from . import __version__ as _APP_VERSION
+
+
 def is_admin() -> bool:
     try:
         if os.name == "nt":
@@ -38,8 +41,18 @@ def install_dir() -> str:
     return r"C:\Program Files\AiPC"
 
 
+def exe_filename() -> str:
+    """Каноническое имя файла: AiPC_Win_<версия>.exe. По нему ориентируемся везде."""
+    return f"AiPC_Win_{_APP_VERSION}.exe"
+
+
+def shim_name() -> str:
+    """Короткая команда: aipc.bat рядом, чтобы `aipc` работало при любом релизе."""
+    return "aipc.bat"
+
+
 def installed_exe() -> Path:
-    return Path(install_dir()) / "aipc.exe"
+    return Path(install_dir()) / exe_filename()
 
 
 def is_installed() -> bool:
@@ -103,31 +116,60 @@ def add_to_system_path(path: str) -> tuple[bool, str]:
 
 
 def install_self_to_program_files() -> tuple[bool, str]:
-    """Копирует aipc.exe в Program Files. Требует админа на запись."""
+    """Копирует exe в Program Files под каноническим именем + шим aipc.bat. Требует админа."""
     dst = Path(install_dir())
     try:
         dst.mkdir(parents=True, exist_ok=True)
         if is_frozen():
             src = current_exe()
-            target = dst / "aipc.exe"
+            target = dst / exe_filename()
             # Не копировать самого себя
             try:
                 if src.resolve() == target.resolve() and target.exists():
+                    _write_shim(dst)
                     return True, f"уже на месте: {target}"
             except Exception:
                 pass
             shutil.copy2(src, target)
+            _clean_legacy(dst, keep=target.name)
+            _write_shim(dst)
             # Рядом кладем пресеты чтобы menu их находило и в frozen-режиме
             try:
                 (dst / "mcp_presets").mkdir(exist_ok=True)
             except Exception:
                 pass
-            return True, f"скопировано {src} -> {target}"
+            return True, f"скопировано {src.name} -> {target}"
         return True, f"папка готова: {dst} (dev-режим: добавь проект в PATH вручную или собери exe)"
     except PermissionError:
         return False, "нужны права админа"
     except Exception as e:
         return False, str(e)
+
+
+def _clean_legacy(dst: Path, keep: str) -> None:
+    """Убрать старый aipc.exe и прошлые версии AiPC_Win_*.exe, кроме текущей."""
+    try:
+        for child in dst.iterdir():
+            if not child.is_file():
+                continue
+            name = child.name
+            if name == keep or name.lower() == shim_name():
+                continue
+            if name.lower() == "aipc.exe" or (name.startswith("AiPC_Win_") and name.lower().endswith(".exe")):
+                try:
+                    child.unlink()
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+
+def _write_shim(dst: Path) -> None:
+    """Шим `aipc.bat`: команда `aipc` работает при любом имени релиза."""
+    try:
+        (dst / shim_name()).write_text(f'@"%~dp0{exe_filename()}" %*\n', encoding="utf-8")
+    except Exception:
+        pass
 
 
 # --- MCP: пути конфигов IDE на Windows ---

@@ -20,7 +20,7 @@ if %errorlevel% neq 0 (
   exit /b 1
 )
 
-for %%F in (dist\aipc.exe dist\AiPC-Setup.exe) do (
+for %%F in (dist\AiPC_Win_1.0.5.1.exe dist\AiPC-Setup.exe) do (
   if exist "%%F" (
     echo [sign] Подписываю %%F ...
     signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f "%AIPC_CERT%" /p "%AIPC_CERT_PASS%" "%%F"

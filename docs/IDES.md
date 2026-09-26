@@ -35,7 +35,7 @@ Legend: **Auto** — we write it ourselves on launch; **Preset** — file + 1 ma
 | Aider | Place `mcp_presets/aider.json` nearby / specify `--mcp-servers` (depends on version, check `aider --help`) |
 | Goose | Add the block from `mcp_presets/goose.yaml` into `~/.config/goose/config.yaml` → `extensions` |
 | Neovim | Plugin mcphub.nvim + contents of `mcp_presets/nvim.json` into its `servers.json` |
-| Emacs | Package mcp.el + command `C:\Program Files\AiPC\aipc.exe` with args `("mcp")` |
+| Emacs | Package mcp.el + command `C:\Program Files\AiPC\AiPC_Win_1.0.5.1.exe` with args `("mcp")` |
 | OpenSumi | Import `mcp_presets/jetbrains.json` (mcpServers format) into AI settings |
 | Theia IDE / Theia AI | Import the mcpServers preset into AI settings |
 | LibreChat | `mcpServers` block in `librechat.yaml` (example — `mcp_presets/cursor.json`) |

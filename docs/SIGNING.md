@@ -2,7 +2,7 @@
 
 ## Why Windows shows the blue screen “Windows Defender protected your PC”
 
-`aipc.exe` has no **code-signing digital signature** and no **SmartScreen reputation**.
+`AiPC_Win_1.0.5.1.exe` has no **code-signing digital signature** and no **SmartScreen reputation**.
 Windows does not know the publisher → it errs on the side of caution. This is normal for new
 unsigned programs; it is not a virus.
 
@@ -26,7 +26,7 @@ set AIPC_CERT=C:\certs\s1steam.pfx
 set AIPC_CERT_PASS=your_password
 tools\sign.bat
 ```
-The script will sign `dist\aipc.exe` (and `AiPC-Setup.exe`) via `signtool`
+The script will sign `dist\AiPC_Win_1.0.5.1.exe` (and `AiPC-Setup.exe`) via `signtool`
 with a DigiCert timestamp and verify the signature. You need the Windows SDK installed
 (that is where `signtool` lives).
 
@@ -34,9 +34,9 @@ with a DigiCert timestamp and verify the signature. You need the Windows SDK ins
 
 1. **Submit the file to Microsoft for review:**
    https://www.microsoft.com/en-us/wdsi/filesubmission —
-   select “Software Developer”, attach `aipc.exe`. This removes
+   select “Software Developer”, attach `AiPC_Win_1.0.5.1.exe`. This removes
    false Defender detections and speeds up SmartScreen reputation accumulation.
-2. **Do not change the file name** between releases (`aipc.exe`) — reputation
+2. **Do not change the file name** between releases (`AiPC_Win_1.0.5.1.exe`) — reputation
    is tied to the name + signature.
 3. **Accumulate downloads** — SmartScreen learns: the more people
    run the file and click “Run anyway”, the faster the

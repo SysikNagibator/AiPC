@@ -5,7 +5,7 @@ import sys
 def main() -> int:
     from aipc.installer import is_admin, privileged_self_install, relaunch_as_admin
 
-    print("=== AiPC от Sysik : Setup ===")
+    print("=== AiPC от SYSIK : Setup ===")
     if not is_admin():
         print("Нужны права админа — перезапуск с UAC...")
         relaunch_as_admin()

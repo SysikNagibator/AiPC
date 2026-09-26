@@ -5,7 +5,7 @@ import os
 import threading
 
 
-def _win_popup(text: str, title: str = "AiPC от Sysik") -> bool:
+def _win_popup(text: str, title: str = "AiPC от SYSIK") -> bool:
     if os.name != "nt":
         return False
     try:

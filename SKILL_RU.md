@@ -12,7 +12,7 @@
 {
   "mcpServers": {
     "aipc": {
-      "command": "C:\\Program Files\\AiPC\\aipc.exe",
+      "command": "C:\\Program Files\\AiPC\\AiPC_Win_1.0.5.1.exe",
       "args": ["mcp"]
     }
   }
@@ -25,7 +25,7 @@
 {
   "mcpServers": {
     "aipc": {
-      "command": "C:\\path\\to\\aipc.exe",
+      "command": "C:\\path\\to\\AiPC_Win_1.0.5.1.exe",
       "args": ["mcp"]
     }
   }

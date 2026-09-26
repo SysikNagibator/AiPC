@@ -20,9 +20,12 @@ def _rich():
     except Exception:
         pass
     console = Console(highlight=False, legacy_windows=False)
-    # Чистый экран под каждый экшен: прошлые выводы не висят хвостом
+    # Чистый экран под каждый экшен: прошлые выводы не висят хвостом.
+    # clear_screen идёт через WinAPI cls (ANSI-clear молча глотается рядом консолей).
     try:
-        console.clear()
+        from .menu import clear_screen
+
+        clear_screen()
     except Exception:
         pass
     return console, Panel, Align, MENU_WIDTH, THEME

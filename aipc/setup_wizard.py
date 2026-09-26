@@ -17,7 +17,9 @@ def choose_mode() -> None:
 
     console = Console(highlight=False, legacy_windows=False)
     try:
-        console.clear()
+        from .menu import clear_screen
+
+        clear_screen()
     except Exception:
         pass
     idx = run_menu("Режим работы", [MenuItem("ask — спрашивать (по умолчанию)", "ask"), MenuItem("auto — полная автономность", "auto"), MenuItem("read-only — только смотреть", "ro")])
@@ -41,7 +43,9 @@ def setup_ide() -> None:
 
     console = Console(highlight=False, legacy_windows=False)
     try:
-        console.clear()
+        from .menu import clear_screen
+
+        clear_screen()
     except Exception:
         pass
     lines = []
@@ -61,7 +65,9 @@ def setup_browser() -> None:
 
     console = Console(highlight=False, legacy_windows=False)
     try:
-        console.clear()
+        from .menu import clear_screen
+
+        clear_screen()
     except Exception:
         pass
     body = (
@@ -84,7 +90,9 @@ def setup_ssh() -> None:
 
     console = Console(highlight=False, legacy_windows=False)
     try:
-        console.clear()
+        from .menu import clear_screen
+
+        clear_screen()
     except Exception:
         pass
     try:

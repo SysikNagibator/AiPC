@@ -1,4 +1,4 @@
-# AiPC от Sysik — лого и тема оформления (без эмодзи, только символы CMD)
+# AiPC от SYSIK — лого и тема оформления (без эмодзи, только символы CMD)
 from __future__ import annotations
 
 from . import __version__
