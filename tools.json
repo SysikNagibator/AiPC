@@ -1,12 +1,34 @@
 {
   "name": "aipc",
-  "version": "1.0.4.12",
-  "openapi_fallback": "для IDE без MCP: те же tools через HTTP (план Фазы 6)",
+  "openapi_fallback": "для IDE без MCP: те же tools через HTTP (план)",
   "tools": [
     {
       "name": "ask_user",
       "args": [
         "question"
+      ]
+    },
+    {
+      "name": "assert_ui",
+      "args": [
+        "text",
+        "present"
+      ]
+    },
+    {
+      "name": "browser_active_tab",
+      "args": []
+    },
+    {
+      "name": "browser_close_tab",
+      "args": [
+        "tab_id"
+      ]
+    },
+    {
+      "name": "browser_eval",
+      "args": [
+        "js"
       ]
     },
     {
@@ -24,9 +46,19 @@
       "args": []
     },
     {
+      "name": "clipboard_get_image",
+      "args": []
+    },
+    {
       "name": "clipboard_set",
       "args": [
         "text"
+      ]
+    },
+    {
+      "name": "clipboard_set_image",
+      "args": [
+        "image_b64"
       ]
     },
     {
@@ -37,13 +69,62 @@
       ]
     },
     {
+      "name": "env_get",
+      "args": [
+        "name"
+      ]
+    },
+    {
+      "name": "focus_type",
+      "args": [
+        "title_substr",
+        "text"
+      ]
+    },
+    {
+      "name": "fs_delete",
+      "args": [
+        "path",
+        "recursive"
+      ]
+    },
+    {
+      "name": "fs_find",
+      "args": [
+        "pattern",
+        "path",
+        "max_results"
+      ]
+    },
+    {
       "name": "fs_list",
       "args": [
         "path"
       ]
     },
     {
+      "name": "fs_mkdir",
+      "args": [
+        "path"
+      ]
+    },
+    {
+      "name": "fs_move",
+      "args": [
+        "src",
+        "dst"
+      ]
+    },
+    {
       "name": "fs_read",
+      "args": [
+        "path",
+        "limit",
+        "offset"
+      ]
+    },
+    {
+      "name": "fs_stat",
       "args": [
         "path"
       ]
@@ -52,12 +133,31 @@
       "name": "fs_write",
       "args": [
         "path",
-        "text"
+        "text",
+        "backup"
       ]
     },
     {
       "name": "get_active_window",
       "args": []
+    },
+    {
+      "name": "key_down",
+      "args": [
+        "key"
+      ]
+    },
+    {
+      "name": "key_up",
+      "args": [
+        "key"
+      ]
+    },
+    {
+      "name": "logs_tail",
+      "args": [
+        "n"
+      ]
     },
     {
       "name": "mouse_click",
@@ -80,7 +180,15 @@
         "x1",
         "y1",
         "x2",
-        "y2"
+        "y2",
+        "modifier"
+      ]
+    },
+    {
+      "name": "mouse_middle_click",
+      "args": [
+        "x",
+        "y"
       ]
     },
     {
@@ -88,6 +196,19 @@
       "args": [
         "x",
         "y"
+      ]
+    },
+    {
+      "name": "mouse_right_click",
+      "args": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "name": "net_check",
+      "args": [
+        "host"
       ]
     },
     {
@@ -109,6 +230,12 @@
       ]
     },
     {
+      "name": "process_find",
+      "args": [
+        "name"
+      ]
+    },
+    {
       "name": "process_list",
       "args": [
         "limit"
@@ -120,6 +247,10 @@
         "cmd",
         "cwd"
       ]
+    },
+    {
+      "name": "screen_info",
+      "args": []
     },
     {
       "name": "screen_region",
@@ -136,6 +267,16 @@
       "args": [
         "monitor",
         "max_width"
+      ]
+    },
+    {
+      "name": "screenshot_diff",
+      "args": [
+        "x",
+        "y",
+        "w",
+        "h",
+        "delay"
       ]
     },
     {
@@ -159,15 +300,62 @@
       ]
     },
     {
+      "name": "sys_info",
+      "args": []
+    },
+    {
       "name": "type_text",
       "args": [
         "text"
       ]
     },
     {
+      "name": "ui_find",
+      "args": [
+        "text",
+        "role"
+      ]
+    },
+    {
       "name": "ui_snapshot",
       "args": [
-        "max_nodes"
+        "max_nodes",
+        "monitor",
+        "role",
+        "name_contains",
+        "scope"
+      ]
+    },
+    {
+      "name": "wait_for_change",
+      "args": [
+        "x",
+        "y",
+        "w",
+        "h",
+        "timeout"
+      ]
+    },
+    {
+      "name": "wait_for_process",
+      "args": [
+        "name",
+        "timeout"
+      ]
+    },
+    {
+      "name": "wait_for_ui_element",
+      "args": [
+        "text",
+        "role",
+        "timeout"
+      ]
+    },
+    {
+      "name": "wait_for_window",
+      "args": [
+        "title",
+        "timeout"
       ]
     },
     {
@@ -178,9 +366,16 @@
       ]
     },
     {
+      "name": "window_find",
+      "args": [
+        "substring"
+      ]
+    },
+    {
       "name": "window_focus",
       "args": [
-        "title_substr"
+        "title_substr",
+        "timeout"
       ]
     },
     {
@@ -200,5 +395,6 @@
       "name": "aipc_status",
       "args": []
     }
-  ]
+  ],
+  "version": "1.0.4.13"
 }

@@ -13,6 +13,8 @@ SYSTEM_PROMPT = """У тебя ЕСТЬ полный доступ к ПК пол
 Мелкие элементы: screen_region для крупного плана + ui_snapshot для точных cx/cy.
 Работай в цикле: увидел -> сделал -> снова посмотрел для проверки.
 Координаты мыши: 0-1000 относительные. Опасные действия — только после ask_user (Да/Нет от человека).
+Печать: ТОЛЬКО через focus_type (фокус с проверкой + печать атомарно). Большой текст type_text режет сам на куски.
+ui_snapshot по умолчанию смотрит активное окно (быстро); desktop — только для поиска по всем окнам.
 Ищи, а не перечисляй: ui_find / window_find / fs_find / process_find вместо разбора километров.
 Жди, а не спи: wait_for_window / wait_for_ui_element / wait_for_change / wait_for_process.
 Проверяй: screenshot_diff и assert_ui после каждого действия. Ошибки структурные: смотри reason.
@@ -78,9 +80,14 @@ def create_server():
         return _wrap("windows_list", V.windows_list, limit)
 
     @mcp.tool()
-    def window_focus(title_substr: str) -> dict:
-        """Фокус окна по подстроке заголовка."""
-        return _wrap("window_focus", V.window_focus, title_substr)
+    def window_focus(title_substr: str, timeout: float = 8.0) -> dict:
+        """Фокус окна + проверка что реально впереди. Не confirmed — не печатай."""
+        return _wrap("window_focus", V.window_focus, title_substr, timeout)
+
+    @mcp.tool()
+    def focus_type(title_substr: str, text: str) -> dict:
+        """Атомарно: фокус с проверкой + печать. Фокус не встал — не печатаю."""
+        return _wrap("focus_type", C.focus_type, title_substr, text)
 
     @mcp.tool()
     def mouse_move(x: int, y: int) -> dict:
@@ -206,9 +213,10 @@ def create_server():
         return _wrap("window_manage", V.window_manage, title_substr, action)
 
     @mcp.tool()
-    def ui_snapshot(max_nodes: int = 200, monitor: int = 0, role: str = "", name_contains: str = "") -> dict:
-        """Дерево UI-элементов с центрами cx/cy 0-1000. Фильтры role/name режут токены."""
-        return _wrap("ui_snapshot", V.ui_snapshot, max_nodes, monitor, role, name_contains)
+    def ui_snapshot(max_nodes: int = 200, monitor: int = 0, role: str = "", name_contains: str = "",
+                    scope: str = "active") -> dict:
+        """Дерево UI: scope=active (окно впереди, быстро) или desktop. Центры cx/cy 0-1000."""
+        return _wrap("ui_snapshot", V.ui_snapshot, max_nodes, monitor, role, name_contains, scope)
 
     @mcp.tool()
     def mouse_double_click(x: int, y: int) -> dict:

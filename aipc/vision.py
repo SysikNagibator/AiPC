@@ -130,12 +130,13 @@ def window_manage(title_substr: str, action: str = "minimize") -> dict:
         return {"ok": False, "error": str(e)}
 
 
-def ui_snapshot(max_nodes: int = 200, monitor: int = 0, role: str = "", name_contains: str = "") -> dict:
-    """Дерево UI-элементов с центрами cx/cy в 0-1000. Фильтры role/name режут токены."""
-    nodes, err = _collect_ui(monitor, role, name_contains, max(10, min(1000, max_nodes)))
+def ui_snapshot(max_nodes: int = 200, monitor: int = 0, role: str = "", name_contains: str = "",
+                scope: str = "active") -> dict:
+    """Дерево UI. scope=active (окно впереди: быстро, мало токенов) или desktop (всё)."""
+    nodes, err = _collect_ui(monitor, role, name_contains, max(10, min(1000, max_nodes)), scope)
     if err and not nodes:
         return {"ok": False, "reason": "missing_dep" if "uiautomation" in err else "error", "error": err}
-    return {"ok": True, "nodes": nodes, "count": len(nodes)}
+    return {"ok": True, "nodes": nodes, "count": len(nodes), "scope": scope}
 
 
 def windows_list(limit: int = 50) -> dict:
@@ -155,26 +156,109 @@ def windows_list(limit: int = 50) -> dict:
         return {"ok": False, "error": str(e)}
 
 
-def window_focus(title_substr: str) -> dict:
+def _foreground_title() -> str:
+    try:
+        import pygetwindow as gw  # type: ignore
+
+        w = gw.getActiveWindow()
+        return w.title if w else ""
+    except Exception:
+        return ""
+
+
+def _force_foreground(hwnd: int) -> bool:
+    """Жесткое выведение окна вперед. Возвращает True если API отработали (не факт что фокус встал)."""
+    try:
+        import ctypes
+
+        user32 = ctypes.windll.user32
+        try:
+            user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+        except Exception:
+            pass
+        try:
+            # TOPMOST туда-обратно пробивает foreground-lock
+            user32.SetWindowPos(hwnd, -1, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040)
+            user32.SetWindowPos(hwnd, -2, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040)
+        except Exception:
+            pass
+        try:
+            user32.SetForegroundWindow(hwnd)
+            return True
+        except Exception:
+            return False
+    except Exception:
+        return False
+
+
+def window_focus(title_substr: str, timeout: float = 8.0, verify: bool = True) -> dict:
+    """Фокус окна + ПРОВЕРКА что реально впереди. Без verify=True не подтверждаю.
+
+    Стратегии по кругу до timeout: activate -> restore+activate -> WinAPI force.
+    Возвращает verified:true только если foreground совпал — иначе печать запрещена.
+    """
+    import time as _time
+
     try:
         import pygetwindow as gw  # type: ignore
     except ImportError:
-        return {"ok": False, "error": "нет pygetwindow"}
+        return {"ok": False, "reason": "missing_dep", "error": "нет pygetwindow"}
+    needle = (title_substr or "").lower()
+    if not needle:
+        return {"ok": False, "reason": "bad_arg", "error": "пустая подстрока"}
     try:
-        for w in gw.getAllWindows():
-            if title_substr.lower() in (w.title or "").lower():
+        cands = [w for w in gw.getAllWindows() if needle in (w.title or "").lower()]
+    except Exception as e:
+        return {"ok": False, "reason": "error", "error": str(e)}
+    if not cands:
+        return {"ok": False, "reason": "not_found", "error": f"окно не найдено: {title_substr}"}
+    # Сначала видимые неминимизированные
+    def rank(w):
+        try:
+            minimized = bool(w.isMinimized)
+        except Exception:
+            minimized = False
+        return (minimized, -(len(w.title or "")))
+
+    cands.sort(key=rank)
+    deadline = _time.monotonic() + max(1.0, timeout)
+    attempts = 0
+    tried_force = False
+    while True:
+        for w in cands:
+            attempts += 1
+            try:
+                try:
+                    if bool(w.isMinimized):
+                        w.restore()
+                except Exception:
+                    pass
                 try:
                     w.activate()
                 except Exception:
+                    pass
+                if not tried_force:
                     try:
-                        w.minimize()
-                        w.restore()
+                        hwnd = int(getattr(w, "_hWnd", 0) or 0)
                     except Exception:
-                        pass
-                return {"ok": True, "title": w.title}
-        return {"ok": False, "reason": "not_found", "error": f"окно не найдено: {title_substr}"}
-    except Exception as e:
-        return {"ok": False, "reason": "error", "error": str(e)}
+                        hwnd = 0
+                    if hwnd:
+                        _force_foreground(hwnd)
+                        tried_force = True
+            except Exception:
+                pass
+            _time.sleep(0.35)
+            fg = _foreground_title()
+            if needle in fg.lower():
+                return {"ok": True, "title": fg, "verified": True, "attempts": attempts}
+            if not verify:
+                return {"ok": True, "title": w.title or "", "verified": False, "attempts": attempts}
+        if _time.monotonic() >= deadline:
+            fg = _foreground_title()
+            return {"ok": False, "reason": "not_focused",
+                    "error": f"фокус не встал за {timeout}с, впереди: {fg[:80]!r}",
+                    "foreground": fg, "attempts": attempts}
+        _time.sleep(0.4)
 
 
 def _monitor_rect(monitor: int = 0) -> dict:
@@ -219,8 +303,9 @@ def _poll(timeout: float, interval: float, fn):
         _time.sleep(min(interval, max(0.1, deadline - _time.monotonic())))
 
 
-def _collect_ui(monitor: int = 0, role: str = "", name_contains: str = "", max_nodes: int = 200) -> tuple[list, str]:
-    """Общий сборщик UI-дерева. Возвращает (nodes, error)."""
+def _collect_ui(monitor: int = 0, role: str = "", name_contains: str = "", max_nodes: int = 200,
+                scope: str = "active") -> tuple[list, str]:
+    """Общий сборщик UI-дерева. scope=active (только окно впереди, быстро) или desktop."""
     try:
         import uiautomation as auto  # type: ignore
     except ImportError:
@@ -232,6 +317,26 @@ def _collect_ui(monitor: int = 0, role: str = "", name_contains: str = "", max_n
     mw, mh, ml, mt = mon["width"], mon["height"], mon["left"], mon["top"]
     role, name_contains = role.lower(), name_contains.lower()
     nodes: list[dict] = []
+
+    root = None
+    if scope == "active":
+        try:
+            import pygetwindow as gw  # type: ignore
+
+            w = gw.getActiveWindow()
+            hwnd = int(getattr(w, "_hWnd", 0) or 0) if w else 0
+            if hwnd:
+                root = auto.ControlFromHandle(hwnd)
+        except Exception:
+            root = None
+    if root is None:
+        if scope == "active":
+            pass  # упадём ниже на GetRootControl? Нет — честно скажем
+            return [], "нет активного окна для scope=active"
+        try:
+            root = auto.GetRootControl()
+        except Exception as e:
+            return [], str(e)
 
     def walk(control, depth: int) -> None:
         if len(nodes) >= max_nodes or depth > 6:
@@ -269,15 +374,15 @@ def _collect_ui(monitor: int = 0, role: str = "", name_contains: str = "", max_n
                 continue
 
     try:
-        walk(auto.GetRootControl(), 0)
+        walk(root, 0)
     except Exception as e:
         return [], str(e)
     return nodes, ""
 
 
-def ui_find(text: str, role: str = "", monitor: int = 0, max_nodes: int = 200) -> dict:
+def ui_find(text: str, role: str = "", monitor: int = 0, max_nodes: int = 200, scope: str = "active") -> dict:
     """Найти элементы по тексту (нечётко) + опционально роли. Возвращает совпадения с cx/cy."""
-    nodes, err = _collect_ui(monitor, role, text, max_nodes)
+    nodes, err = _collect_ui(monitor, role, text, max_nodes, scope)
     if err and not nodes:
         return {"ok": False, "reason": "missing_dep" if "uiautomation" in err else "error", "error": err}
     return {"ok": True, "found": nodes, "count": len(nodes)}

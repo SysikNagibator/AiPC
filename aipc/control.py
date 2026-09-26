@@ -142,19 +142,6 @@ def _set_clipboard(text: str) -> bool:
         return False
 
 
-def _type_via_clipboard(text: str) -> bool:
-    """Печать любого юникода (кириллица!) через буфер обмена + Ctrl+V. Только Windows."""
-    if not _set_clipboard(text):
-        return False
-    try:
-        import pyautogui  # type: ignore
-
-        pyautogui.hotkey("ctrl", "v")
-        return True
-    except Exception:
-        return False
-
-
 def clipboard_set(text: str) -> dict:
     """Положить текст в буфер обмена."""
     if _set_clipboard(text):
@@ -290,21 +277,52 @@ def sleep(seconds: float = 1.0) -> dict:
     return {"ok": True, "slept": s}
 
 
+TYPE_FAST_LIMIT = 200
+TYPE_CHUNK = 4000
+TYPE_MAX = 50000
+
+
 def type_text(text: str) -> dict:
+    """Печать текста. Маленький ASCII — посимвольно, всё остальное — кусками через буфер.
+
+    Большой текст одним typewrite печатался бы минутами и рвался по таймауту MCP —
+    поэтому чанки по 4000 с паузами. Буфер пользователя сохраняем и возвращаем.
+    """
     try:
+        import time as _time
+
         import pyautogui  # type: ignore
     except ImportError:
-        return {"ok": False, "error": "нет pyautogui. pip install pyautogui"}
+        return {"ok": False, "reason": "missing_dep", "error": "нет pyautogui. pip install pyautogui"}
+    if not text:
+        return {"ok": False, "reason": "bad_arg", "error": "пустой текст"}
+    if len(text) > TYPE_MAX:
+        return {"ok": False, "reason": "too_big", "error": f"текст {len(text)}, лимит {TYPE_MAX}: режь на части"}
     try:
-        if text.isascii():
+        if text.isascii() and len(text) <= TYPE_FAST_LIMIT:
             pyautogui.typewrite(text, interval=0.01)
-        else:
-            # pyautogui не умеет не-ASCII (кириллицу роняет) — идем через буфер
-            if not _type_via_clipboard(text):
-                return {"ok": False, "error": "не получилось вставить не-ASCII текст"}
-        return {"ok": True, "len": len(text)}
+            return {"ok": True, "len": len(text), "method": "keys"}
+        # Кусками через буфер: быстро и держит любой юникод
+        try:
+            orig = clipboard_get().get("text", "")
+        except Exception:
+            orig = ""
+        typed = 0
+        for i in range(0, len(text), TYPE_CHUNK):
+            chunk = text[i:i + TYPE_CHUNK]
+            if not _set_clipboard(chunk):
+                return {"ok": False, "reason": "error", "error": "буфер недоступен", "typed": typed}
+            pyautogui.hotkey("ctrl", "v")
+            typed += len(chunk)
+            _time.sleep(0.3)
+        try:
+            if orig:
+                _set_clipboard(orig)
+        except Exception:
+            pass
+        return {"ok": True, "len": typed, "method": "paste", "chunks": (len(text) + TYPE_CHUNK - 1) // TYPE_CHUNK}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "reason": "error", "error": str(e)}
 
 
 _KEY_ALIASES = {"control": "ctrl", "ctl": "ctrl", "del": "delete", "esc": "escape", "return": "enter"}
@@ -379,6 +397,25 @@ def mouse_middle_click(x: int, y: int) -> dict:
         return {"ok": True, "x": ax, "y": ay}
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+def focus_type(title_substr: str, text: str, timeout: float = 8.0) -> dict:
+    """Атомарно: фокус + ПРОВЕРКА + печать. Фокус не встал — не печатаю вообще.
+
+    Убирает целый класс багов «напечатал не туда»: печать идёт только
+    в проверенное foreground-окно.
+    """
+    from .vision import window_focus
+
+    f = window_focus(title_substr, timeout=timeout, verify=True)
+    if not f.get("ok"):
+        return {"ok": False, "reason": f.get("reason", "not_focused"),
+                "error": f"не печатаю: {f.get('error')}", "focus": f}
+    t = type_text(text)
+    t["focus_title"] = f.get("title")
+    if not t.get("ok"):
+        t["focus"] = f
+    return t
 
 
 def open_app(name_or_path: str) -> dict:
