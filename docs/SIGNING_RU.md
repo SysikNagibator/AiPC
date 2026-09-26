@@ -1,3 +1,5 @@
+> **English version:** [SIGNING.md](SIGNING.md)
+
 # Подпись и SmartScreen — честная инструкция
 
 ## Почему Windows показывает синий экран «Защитник Windows защитил компьютер»
