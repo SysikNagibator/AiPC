@@ -1,3 +1,5 @@
+> **Russian version:** [SKILL_RU.md](SKILL_RU.md)
+
 # AiPC skill — full PC access for any coding agent
 
 Give the agent "this" and it gets a real PC: screen, mouse, keyboard,
