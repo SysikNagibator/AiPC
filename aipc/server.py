@@ -177,6 +177,21 @@ def create_server():
         return _wrap("ssh_exec", N.ssh_exec, host, username, cmd, key_path, None, port)
 
     @mcp.tool()
+    def ssh_sftp_get(host: str, username: str, remote: str, local: str) -> dict:
+        """Забрать файл по SSH (remote -> local, стрим без лимита)."""
+        return _wrap("ssh_sftp_get", N.ssh_sftp_get, host, username, remote, local)
+
+    @mcp.tool()
+    def ssh_sftp_put(host: str, username: str, local: str, remote: str) -> dict:
+        """Положить файл по SSH (local -> remote, стрим без лимита)."""
+        return _wrap("ssh_sftp_put", N.ssh_sftp_put, host, username, local, remote)
+
+    @mcp.tool()
+    def browser_history_search(query: str, limit: int = 10) -> dict:
+        """Поиск по истории Chrome/Edge. Только чтение, браузер не трогаем."""
+        return _wrap("browser_history_search", B.browser_history_search, query, limit)
+
+    @mcp.tool()
     def notify_user(text: str) -> dict:
         """Показать сообщение человеку (всплывающее окно + лог). Не блокирует."""
         from . import notify as NT

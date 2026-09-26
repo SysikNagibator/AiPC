@@ -80,4 +80,4 @@ def env_get(name: str) -> dict:
     val = os.environ.get(name.strip())
     if val is None:
         return {"ok": False, "reason": "not_found", "error": f"нет переменной: {name}"}
-    return {"ok": True, "name": name.strip(), "value": val[:2000]}
+    return {"ok": True, "name": name.strip(), "value": val}

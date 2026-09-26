@@ -171,7 +171,7 @@ def clipboard_get() -> dict:
                 text = ctypes.wstring_at(lock)
             finally:
                 kernel32.GlobalUnlock(hmem)
-            return {"ok": True, "text": (text or "")[:20000]}
+            return {"ok": True, "text": text or ""}
         finally:
             user32.CloseClipboard()
     except Exception as e:
@@ -266,11 +266,11 @@ def clipboard_get_image(max_width: int = 1280) -> dict:
 
 
 def sleep(seconds: float = 1.0) -> dict:
-    """Пауза чтобы дождаться загрузки (макс 30 сек)."""
+    """Пауза чтобы дождаться загрузки. Без верхнего лимита, но долгие паузы вешают вызов."""
     try:
-        s = max(0.5, min(30.0, float(seconds)))
+        s = max(0.1, float(seconds))
     except (TypeError, ValueError):
-        return {"ok": False, "error": "seconds числом 0.5-30"}
+        return {"ok": False, "error": "seconds числом"}
     import time as _time
 
     _time.sleep(s)
@@ -278,16 +278,11 @@ def sleep(seconds: float = 1.0) -> dict:
 
 
 TYPE_FAST_LIMIT = 200
-TYPE_CHUNK = 4000
-TYPE_MAX = 50000
+TYPE_CHUNK = 8000
 
 
 def type_text(text: str) -> dict:
-    """Печать текста. Маленький ASCII — посимвольно, всё остальное — кусками через буфер.
-
-    Большой текст одним typewrite печатался бы минутами и рвался по таймауту MCP —
-    поэтому чанки по 4000 с паузами. Буфер пользователя сохраняем и возвращаем.
-    """
+    """Печать текста без лимита размера. Маленький ASCII — посимвольно, всё остальное — кусками через буфер."""
     try:
         import time as _time
 
@@ -296,8 +291,6 @@ def type_text(text: str) -> dict:
         return {"ok": False, "reason": "missing_dep", "error": "нет pyautogui. pip install pyautogui"}
     if not text:
         return {"ok": False, "reason": "bad_arg", "error": "пустой текст"}
-    if len(text) > TYPE_MAX:
-        return {"ok": False, "reason": "too_big", "error": f"текст {len(text)}, лимит {TYPE_MAX}: режь на части"}
     try:
         if text.isascii() and len(text) <= TYPE_FAST_LIMIT:
             pyautogui.typewrite(text, interval=0.01)
@@ -397,6 +390,23 @@ def mouse_middle_click(x: int, y: int) -> dict:
         return {"ok": True, "x": ax, "y": ay}
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+def mouse_double_click(x: int, y: int) -> dict:
+    """Двойной клик. Координаты 0-1000."""
+    try:
+        import pyautogui  # type: ignore
+    except ImportError:
+        return {"ok": False, "reason": "missing_dep", "error": "нет pyautogui. pip install pyautogui"}
+    try:
+        ax, ay = _rel_to_abs(x, y)
+        pyautogui.doubleClick(ax, ay)
+        import time as _time
+
+        _time.sleep(0.3)
+        return {"ok": True, "x": ax, "y": ay}
+    except Exception as e:
+        return {"ok": False, "reason": "error", "error": str(e)}
 
 
 def focus_type(title_substr: str, text: str, timeout: float = 8.0) -> dict:

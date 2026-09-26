@@ -133,7 +133,7 @@ def window_manage(title_substr: str, action: str = "minimize") -> dict:
 def ui_snapshot(max_nodes: int = 200, monitor: int = 0, role: str = "", name_contains: str = "",
                 scope: str = "active") -> dict:
     """Дерево UI. scope=active (окно впереди: быстро, мало токенов) или desktop (всё)."""
-    nodes, err = _collect_ui(monitor, role, name_contains, max(10, min(1000, max_nodes)), scope)
+    nodes, err = _collect_ui(monitor, role, name_contains, max(10, min(20000, max_nodes)), scope)
     if err and not nodes:
         return {"ok": False, "reason": "missing_dep" if "uiautomation" in err else "error", "error": err}
     return {"ok": True, "nodes": nodes, "count": len(nodes), "scope": scope}
@@ -457,7 +457,7 @@ def screenshot_diff(x: int, y: int, w: int, h: int, monitor: int = 0, delay: flo
         import time as _time
 
         base = _grab_region(monitor, x, y, w, h)
-        _time.sleep(max(0.2, min(10.0, delay)))
+        _time.sleep(max(0.2, min(60.0, delay)))
         score = _region_score(base, _grab_region(monitor, x, y, w, h))
         return {"ok": True, "changed": score >= 3.0, "score": round(score, 2)}
     except Exception as e:

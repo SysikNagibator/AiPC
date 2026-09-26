@@ -68,8 +68,8 @@ def _ws_eval(ws_url: str, js: str, timeout: int = 20) -> dict:
 
 def browser_eval(js: str, tab_id: str = "", port: int = 9222, timeout: int = 20) -> dict:
     """Выполнить JS в активной (или указанной) вкладке. Надёжнее кликов: читать DOM, кликать селекторы."""
-    if not js or len(js) > 20000:
-        return {"ok": False, "reason": "bad_arg", "error": "пустой/слишком длинный JS"}
+    if not js:
+        return {"ok": False, "reason": "bad_arg", "error": "пустой JS"}
     try:
         import websocket  # type: ignore  # noqa
     except ImportError:
@@ -138,3 +138,70 @@ def browser_close_tab(tab_id: str, port: int = 9222) -> dict:
         return {"ok": False, "reason": "not_found", "error": f"вкладка не закрыта: {tab_id} ({last})"}
     except Exception as e:
         return {"ok": False, "reason": "error", "error": str(e)}
+
+
+def _history_files() -> list:
+    """Пути к History Chrome/Edge (первый существующий приоритетнее)."""
+    import os
+    from pathlib import Path
+
+    local = Path(os.environ.get("LOCALAPPDATA", ""))
+    cands = [
+        local / "Google" / "Chrome" / "User Data" / "Default" / "History",
+        local / "Microsoft" / "Edge" / "User Data" / "Default" / "History",
+        local / "Chromium" / "User Data" / "Default" / "History",
+    ]
+    return [p for p in cands if p.exists()]
+
+
+def _chrome_time(micros: int) -> str:
+    """Время Chrome (мкс с 1601-01-01) -> ISO."""
+    try:
+        import datetime as _dt
+
+        base = _dt.datetime(1601, 1, 1)
+        return (base + _dt.timedelta(microseconds=int(micros or 0))).isoformat(timespec="seconds")
+    except Exception:
+        return ""
+
+
+def browser_history_search(query: str, limit: int = 10) -> dict:
+    """Поиск по истории Chrome/Edge («та вкладка что открывал вчера»). Файл копируем — браузер не трогаем."""
+    import shutil
+    import sqlite3
+    import tempfile
+    from pathlib import Path
+
+    files = _history_files()
+    if not files:
+        return {"ok": False, "reason": "not_found", "error": "History Chrome/Edge не найден"}
+    out: list[dict] = []
+    like = f"%{query}%"
+    for src in files[:2]:
+        tmp = Path(tempfile.gettempdir()) / f"aipc_hist_{src.parent.parent.name}.db"
+        try:
+            shutil.copy2(src, tmp)
+            con = sqlite3.connect(f"file:{tmp}?mode=ro", uri=True)
+            try:
+                rows = con.execute(
+                    "SELECT url, title, last_visit_time FROM urls "
+                    "WHERE url LIKE ? OR title LIKE ? ORDER BY last_visit_time DESC LIMIT ?",
+                    (like, like, max(1, limit)),
+                ).fetchall()
+            finally:
+                con.close()
+            for url, title, ts in rows:
+                out.append({"url": url, "title": title, "visited": _chrome_time(ts),
+                            "browser": src.parent.parent.name})
+                if len(out) >= max(1, limit):
+                    break
+        except Exception:
+            continue
+        finally:
+            try:
+                tmp.unlink(missing_ok=True)
+            except Exception:
+                pass
+        if len(out) >= max(1, limit):
+            break
+    return {"ok": True, "found": out, "count": len(out)}

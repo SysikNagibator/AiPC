@@ -7,6 +7,25 @@ from pathlib import Path
 from .policy import check_cmd_allowed, check_path_allowed, load_mode
 
 
+def check_free_space(path: str, need_bytes: int = 0, reserve_mb: int = 500) -> tuple[bool, str]:
+    """Есть ли место на диске (need + резерв). Не смогли проверить — не блокируем."""
+    try:
+        import shutil
+
+        anchor = Path(path).expanduser()
+        while not anchor.exists():
+            parent = anchor.parent
+            if parent == anchor:
+                break
+            anchor = parent
+        free = shutil.disk_usage(str(anchor)).free
+        if free < need_bytes + reserve_mb * 1048576:
+            return False, f"мало места: свободно {free // 1048576} МБ, надо {(need_bytes // 1048576) + reserve_mb}"
+        return True, ""
+    except Exception:
+        return True, ""
+
+
 def fs_list(path: str) -> dict:
     ok, err = check_path_allowed(path)
     if not ok:
@@ -16,7 +35,7 @@ def fs_list(path: str) -> dict:
         if not p.exists():
             return {"ok": False, "reason": "not_found", "error": f"нет пути: {path}"}
         items = [{"name": x.name, "is_dir": x.is_dir()} for x in p.iterdir()]
-        return {"ok": True, "path": str(p), "items": items[:200]}
+        return {"ok": True, "path": str(p), "items": items[:2000]}
     except Exception as e:
         return {"ok": False, "reason": "error", "error": str(e)}
 
@@ -31,9 +50,6 @@ def fs_read(path: str, limit: int = 20000, offset: int = 0) -> dict:
             return {"ok": False, "reason": "binary",
                     "error": f"бинарный файл ({len(raw)} байт), текст не читаю"}
         data = raw.decode("utf-8", errors="replace")
-        if len(data) > 500000:
-            return {"ok": False, "reason": "too_big",
-                    "error": f"файл {len(data)} символов, читай кусками через offset/limit"}
         off = max(0, offset)
         return {"ok": True, "text": data[off:off + max(100, limit)], "size": len(data), "offset": off}
     except FileNotFoundError:
@@ -153,8 +169,8 @@ def fs_move(src: str, dst: str) -> dict:
         return {"ok": False, "reason": "error", "error": str(e)}
 
 
-def fs_find(pattern: str, path: str = ".", max_results: int = 50, max_seconds: int = 20) -> dict:
-    """Рекурсивный поиск файлов по glob-паттерну (*.log). С бюджетом времени и пропуском мусора."""
+def fs_find(pattern: str, path: str = ".", max_results: int = 50, max_seconds: int = 60) -> dict:
+    """Рекурсивный поиск файлов по glob-паттерну. max_results/max_seconds — пагинация, не запрет."""
     ok, err = check_path_allowed(path)
     if not ok:
         return {"ok": False, "reason": "denied", "error": err}
@@ -168,7 +184,7 @@ def fs_find(pattern: str, path: str = ".", max_results: int = 50, max_seconds: i
             return {"ok": False, "reason": "not_found", "error": f"нет папки: {path}"}
         skip = {"$Recycle.Bin", "System Volume Information", "node_modules", ".git",
                 "__pycache__", ".venv", "venv"}
-        deadline = _time.monotonic() + max(3, min(120, max_seconds))
+        deadline = _time.monotonic() + max(3, max_seconds)
         limit = max(1, max_results)
         out: list[str] = []
         timed_out = False
@@ -222,8 +238,8 @@ def run_cmd(cmd: str, cwd: str | None = None, timeout: int = 60) -> dict:
         stdout = _decode_output(r.stdout or b"")
         stderr = _decode_output(r.stderr or b"")
         return {"ok": r.returncode == 0, "code": r.returncode,
-                "stdout": stdout[-20000:], "stderr": stderr[-8000:],
-                "output": (stdout + (("\n" + stderr) if stderr else ""))[-20000:]}
+                "stdout": stdout[-50000:], "stderr": stderr[-20000:],
+                "output": (stdout + (("\n" + stderr) if stderr else ""))[-50000:]}
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "timeout", "error": f"timeout {timeout}s"}
     except Exception as e:

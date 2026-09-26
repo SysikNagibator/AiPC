@@ -10,3 +10,5 @@ psutil>=5.9
 paramiko>=3
 ddgs>=6
 pyinstaller>=6
+websocket-client>=1.0
+pytest>=8
