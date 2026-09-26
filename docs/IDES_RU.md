@@ -1,4 +1,4 @@
-> **English version:** [IDES.md](IDES.md)
+> **English version:** [docs/IDES.md](IDES.md)
 
 # AiPC × IDE — матрица поддержки
 
