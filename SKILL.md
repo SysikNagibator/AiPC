@@ -67,4 +67,4 @@ Key patterns:
 - Every call is once-only and serialized; verify effects with `screen_see` /
   `screenshot_diff` / `assert_ui`.
 - Modes: `ask` (default), `auto`, `read-only` (mutations blocked server-side).
-- Source + docs: https://github.com/S1sTeam/AiPC (MIT).
+- Source + docs: https://github.com/SysikNagibator/AiPC (MIT).

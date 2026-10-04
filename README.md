@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/S1sTeam/AiPC/releases"><img src="https://img.shields.io/github/v/release/S1sTeam/AiPC?label=release" alt="release"></a>
+  <a href="https://github.com/SysikNagibator/AiPC/releases"><img src="https://img.shields.io/github/v/release/SYSIK/AiPC?label=release" alt="release"></a>
   <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-blue" alt="platform">
   <img src="https://img.shields.io/badge/python-3.10%2B-green" alt="python">
   <img src="https://img.shields.io/badge/tools-63-brightgreen" alt="tools">
@@ -83,7 +83,7 @@ forbids that answer and requires acting through AiPC tools.
 
 | Step | What to do |
 |------|------------|
-| 1 | Download **`AiPC_Win_1.0.6.exe`** from [Releases](https://github.com/S1sTeam/AiPC/releases) and double-click it |
+| 1 | Download **`AiPC_Win_1.0.6.exe`** from [Releases](https://github.com/SysikNagibator/AiPC/releases) and double-click it |
 | 2 | On first run it **sets everything up itself**: asks for admin once (UAC) → copies itself to `C:\Program Files\AiPC\` → adds the `aipc` command to PATH → registers itself in the MCP configs of all detected IDEs (`.bak` backup first) → opens the menu |
 | 3 | In your IDE refresh MCP servers (Refresh / restart) and give the agent a plain-language task |
 

@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/S1sTeam/AiPC/releases"><img src="https://img.shields.io/github/v/release/S1sTeam/AiPC?label=release" alt="release"></a>
+  <a href="https://github.com/SysikNagibator/AiPC/releases"><img src="https://img.shields.io/github/v/release/SYSIK/AiPC?label=release" alt="release"></a>
   <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-blue" alt="platform">
   <img src="https://img.shields.io/badge/python-3.10%2B-green" alt="python">
   <img src="https://img.shields.io/badge/tools-63-brightgreen" alt="tools">
@@ -83,7 +83,7 @@
 
 | Шаг | Что делать |
 |------|------------|
-| 1 | Скачайте **`AiPC_Win_1.0.6.exe`** из [Releases](https://github.com/S1sTeam/AiPC/releases) и запустите двойным щелчком |
+| 1 | Скачайте **`AiPC_Win_1.0.6.exe`** из [Releases](https://github.com/SysikNagibator/AiPC/releases) и запустите двойным щелчком |
 | 2 | При первом запуске он **всё настроит сам**: запросит админа один раз (UAC) → скопирует себя в `C:\Program Files\AiPC\` → добавит команду `aipc` в PATH → зарегистрируется в MCP-конфигах всех обнаруженных IDE (сначала бэкап `.bak`) → откроет меню |
 | 3 | В вашей IDE обновите MCP-серверы (Refresh / перезапуск) и дайте агенту задачу на простом языке |
 

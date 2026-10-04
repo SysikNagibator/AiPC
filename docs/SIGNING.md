@@ -22,7 +22,7 @@ You will need a PFX file + password. Store it outside the repository!
 ## How to sign a release
 
 ```bat
-set AIPC_CERT=C:\certs\s1steam.pfx
+set AIPC_CERT=C:\certs\sysik.pfx
 set AIPC_CERT_PASS=your_password
 tools\sign.bat
 ```
@@ -41,7 +41,7 @@ with a DigiCert timestamp and verify the signature. You need the Windows SDK ins
 3. **Accumulate downloads** — SmartScreen learns: the more people
    run the file and click “Run anyway”, the faster the
    warning disappears on its own.
-4. The exe already has an icon and version info embedded (publisher S1sTeam in the
+4. The exe already has an icon and version info embedded (publisher SYSIK in the
    “Details” tab of the file properties) — this also helps trust.
 
 ## After purchasing a certificate
