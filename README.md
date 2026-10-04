@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/SysikNagibator/AiPC/releases"><img src="https://img.shields.io/github/v/release/SYSIK/AiPC?label=release" alt="release"></a>
+  <a href="https://github.com/SysikNagibator/AiPC/releases"><img src="https://img.shields.io/github/v/release/SysikNagibator/AiPC?label=release" alt="release"></a>
   <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-blue" alt="platform">
   <img src="https://img.shields.io/badge/python-3.10%2B-green" alt="python">
   <img src="https://img.shields.io/badge/tools-63-brightgreen" alt="tools">
@@ -83,7 +83,7 @@ forbids that answer and requires acting through AiPC tools.
 
 | Step | What to do |
 |------|------------|
-| 1 | Download **`AiPC_Win_1.0.6.exe`** from [Releases](https://github.com/SysikNagibator/AiPC/releases) and double-click it |
+| 1 | Download **`AiPC_Win_1.0.7.exe`** from [Releases](https://github.com/SysikNagibator/AiPC/releases) and double-click it |
 | 2 | On first run it **sets everything up itself**: asks for admin once (UAC) → copies itself to `C:\Program Files\AiPC\` → adds the `aipc` command to PATH → registers itself in the MCP configs of all detected IDEs (`.bak` backup first) → opens the menu |
 | 3 | In your IDE refresh MCP servers (Refresh / restart) and give the agent a plain-language task |
 
@@ -180,7 +180,7 @@ Manual reference format:
 {
   "mcpServers": {
     "aipc": {
-      "command": "C:\\Program Files\\AiPC\\AiPC_Win_1.0.6.exe",
+      "command": "C:\\Program Files\\AiPC\\AiPC_Win_1.0.7.exe",
       "args": ["mcp"]
     }
   }
@@ -226,7 +226,7 @@ a stale install in Program Files.
 | `aipc` command unknown | Open a **new** cmd (PATH applies to new shells); reinstall via `dist\aipc.exe` |
 | Right wall of the menu drifts | Update: frames render only via fixed-width `rich.Panel` since 1.0.4.4 |
 | Chrome tabs invisible | Menu → Setup → Browser (adds `--remote-debugging-port=9222`), restart Chrome |
-| Old version in Program Files | `aipc doctor` tells you; run fresh `dist\AiPC_Win_1.0.6.exe` → UAC → updated |
+| Old version in Program Files | `aipc doctor` tells you; run fresh `dist\AiPC_Win_1.0.7.exe` → UAC → updated |
 | GitHub page/API 404s | Our repo was once throttled by GitHub abuse heuristics; mirror + support appeal process in issues |
 
 ---
@@ -257,7 +257,7 @@ python -m aipc selftest
 tools\build_exe.bat
 ```
 
-Output: `dist\AiPC_Win_1.0.6.exe` (~36 MB, icon + publisher version-info) and `dist\AiPC-Setup.exe`.
+Output: `dist\AiPC_Win_1.0.7.exe` (~36 MB, icon + publisher version-info) and `dist\AiPC-Setup.exe`.
 Signing away the blue SmartScreen: see [docs/SIGNING.md](docs/SIGNING.md) (needs
 a code-signing certificate: Certum Open Source ~€25/yr is the cheapest start).
 

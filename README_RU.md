@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/SysikNagibator/AiPC/releases"><img src="https://img.shields.io/github/v/release/SYSIK/AiPC?label=release" alt="release"></a>
+  <a href="https://github.com/SysikNagibator/AiPC/releases"><img src="https://img.shields.io/github/v/release/SysikNagibator/AiPC?label=release" alt="release"></a>
   <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-blue" alt="platform">
   <img src="https://img.shields.io/badge/python-3.10%2B-green" alt="python">
   <img src="https://img.shields.io/badge/tools-63-brightgreen" alt="tools">
@@ -83,7 +83,7 @@
 
 | Шаг | Что делать |
 |------|------------|
-| 1 | Скачайте **`AiPC_Win_1.0.6.exe`** из [Releases](https://github.com/SysikNagibator/AiPC/releases) и запустите двойным щелчком |
+| 1 | Скачайте **`AiPC_Win_1.0.7.exe`** из [Releases](https://github.com/SysikNagibator/AiPC/releases) и запустите двойным щелчком |
 | 2 | При первом запуске он **всё настроит сам**: запросит админа один раз (UAC) → скопирует себя в `C:\Program Files\AiPC\` → добавит команду `aipc` в PATH → зарегистрируется в MCP-конфигах всех обнаруженных IDE (сначала бэкап `.bak`) → откроет меню |
 | 3 | В вашей IDE обновите MCP-серверы (Refresh / перезапуск) и дайте агенту задачу на простом языке |
 
@@ -180,7 +180,7 @@ AiPC регистрирует себя при каждом запуске мен
 {
   "mcpServers": {
     "aipc": {
-      "command": "C:\\Program Files\\AiPC\\AiPC_Win_1.0.6.exe",
+      "command": "C:\\Program Files\\AiPC\\AiPC_Win_1.0.7.exe",
       "args": ["mcp"]
     }
   }
@@ -226,7 +226,7 @@ Replit…) не могут достучаться до `127.0.0.1` — см. р�
 | Команда `aipc` неизвестна | Откройте **новый** cmd (PATH применяется к новым оболочкам); переустановите через `dist\aipc.exe` |
 | Правая стенка меню съезжает | Обновитесь: с 1.0.4.4 кадры рендерятся только через `rich.Panel` фиксированной ширины |
 | Вкладки Chrome не видны | Меню → Настройка → Браузер (добавляет `--remote-debugging-port=9222`), перезапустите Chrome |
-| Старая версия в Program Files | `aipc doctor` подскажет; запустите свежий `dist\AiPC_Win_1.0.6.exe` → UAC → обновлено |
+| Старая версия в Program Files | `aipc doctor` подскажет; запустите свежий `dist\AiPC_Win_1.0.7.exe` → UAC → обновлено |
 | GitHub страница/API 404 | Наш репозиторий однажды затроттлили эвристики GitHub за злоупотребления; зеркало + процесс апелляции в issues |
 
 ---
@@ -257,7 +257,7 @@ python -m aipc selftest
 tools\build_exe.bat
 ```
 
-Выход: `dist\AiPC_Win_1.0.6.exe` (~36 МБ, иконка + publisher version-info) и `dist\AiPC-Setup.exe`.
+Выход: `dist\AiPC_Win_1.0.7.exe` (~36 МБ, иконка + publisher version-info) и `dist\AiPC-Setup.exe`.
 Подпись, убирающая синий SmartScreen: см. [docs/SIGNING.md](docs/SIGNING.md) (нужен
 сертификат code-signing: Certum Open Source ~€25/год — самый дешёвый старт).
 
