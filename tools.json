@@ -1,0 +1,147 @@
+{
+  "name": "aipc",
+  "version": "1.0.1",
+  "openapi_fallback": "для IDE без MCP: те же tools через HTTP (план Фазы 6)",
+  "tools": [
+    {
+      "name": "screen_see",
+      "args": [
+        "monitor",
+        "max_width"
+      ]
+    },
+    {
+      "name": "windows_list",
+      "args": [
+        "limit"
+      ]
+    },
+    {
+      "name": "window_focus",
+      "args": [
+        "title_substr"
+      ]
+    },
+    {
+      "name": "mouse_move",
+      "args": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "name": "mouse_click",
+      "args": [
+        "x",
+        "y",
+        "button"
+      ]
+    },
+    {
+      "name": "mouse_drag",
+      "args": [
+        "x1",
+        "y1",
+        "x2",
+        "y2"
+      ]
+    },
+    {
+      "name": "scroll",
+      "args": [
+        "dy"
+      ]
+    },
+    {
+      "name": "type_text",
+      "args": [
+        "text"
+      ]
+    },
+    {
+      "name": "press_key",
+      "args": [
+        "keys"
+      ]
+    },
+    {
+      "name": "open_app",
+      "args": [
+        "name_or_path"
+      ]
+    },
+    {
+      "name": "fs_list",
+      "args": [
+        "path"
+      ]
+    },
+    {
+      "name": "fs_read",
+      "args": [
+        "path"
+      ]
+    },
+    {
+      "name": "fs_write",
+      "args": [
+        "path",
+        "text"
+      ]
+    },
+    {
+      "name": "run_cmd",
+      "args": [
+        "cmd",
+        "cwd"
+      ]
+    },
+    {
+      "name": "process_list",
+      "args": [
+        "limit"
+      ]
+    },
+    {
+      "name": "browser_tabs",
+      "args": []
+    },
+    {
+      "name": "browser_goto",
+      "args": [
+        "url"
+      ]
+    },
+    {
+      "name": "web_search_pc",
+      "args": [
+        "query",
+        "limit"
+      ]
+    },
+    {
+      "name": "ssh_exec",
+      "args": [
+        "host",
+        "username",
+        "cmd"
+      ]
+    },
+    {
+      "name": "notify_user",
+      "args": [
+        "text"
+      ]
+    },
+    {
+      "name": "ask_user",
+      "args": [
+        "question"
+      ]
+    },
+    {
+      "name": "aipc_status",
+      "args": []
+    }
+  ]
+}

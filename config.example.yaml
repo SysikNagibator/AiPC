@@ -1,0 +1,37 @@
+mode: ask
+server:
+  host: 127.0.0.1
+  port: 18789
+screen:
+  max_width: 1280
+browser:
+  cdp_port: 9222
+ssh_hosts: {}
+web_search:
+  provider: duckduckgo
+safety:
+  deny_cmd:
+    - "format "
+    - "rm -rf /"
+    - "mimikatz"
+    - "sekurlsa"
+    - "ntdsutil"
+    - "vssadmin delete"
+    - "bcdedit"
+    - "cipher /w"
+    - "certutil -decode"
+    - "bitsadmin /transfer"
+    - "powershell -enc "
+    - " -encodedcommand "
+    - "reg delete hklm"
+    - "net localgroup administrators"
+    - "schtasks /create"
+  deny_paths:
+    - "**/Cookies/**"
+    - "**/Login Data**"
+    - "**/id_rsa"
+    - "**/id_ed25519"
+    - "**/*.pem"
+    - "**/*.pfx"
+    - "**/*.kdbx"
+    - "C:\\Windows\\System32\\*"
