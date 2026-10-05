@@ -4,6 +4,8 @@
 
 <h1 align="center">AiPC by SYSIK</h1>
 
+<h1 align="center">This tool is for personal automation and testing on your own machine. Do not use it for unauthorized access.</h1>
+
 <p align="center">
   <b>Give the agent "this" — and it gets a real PC.</b><br>
   Screen, mouse, keyboard, your browser, files, terminal, SSH — via the model's native tools.
