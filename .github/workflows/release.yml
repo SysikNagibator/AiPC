@@ -47,20 +47,38 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aipc-${{ matrix.os }}
-          path: |
-            dist/${{ matrix.pattern }}
-            dist/SHA256SUMS-${{ matrix.os }}.txt
+          path: dist/${{ matrix.pattern }}
 
   publish:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: dist-all
           merge-multiple: true
+      - name: Add banner
+        shell: bash
+        run: cp assets/aipc_poster_before_after_en_v2.png dist-all/
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: dist-all/*
-          generate_release_notes: true
+          body: |
+            ![AiPC by SYSIK](https://github.com/SysikNagibator/AiPC/releases/download/v1.1/aipc_poster_before_after_en_v2.png)
+
+            ## AiPC 1.1 by SYSIK
+
+            Локальный MCP-сервер + терминальное меню: даёт Claude и другим ИИ-ассистентам глаза и руки на твоём ПК — экран, мышь, клавиатура, окна, файлы, терминал, браузер.
+
+            ### Что нового в 1.1
+            - Новое терминальное меню: блок 76 символов, тёмно-зелёная тема, русский и английский, адаптация под ширину консоли
+            - 70 инструментов: скриншоты и UI-дерево, мышь и клавиатура, окна, файлы, сеть, системная информация, звук
+            - Безопасность: подтверждение опасных действий человеком (таймеры 10/60 минут), deny-листы путей и команд, маскирование секретов, аудит-лог
+            - Windows, macOS и Linux: POSIX-буфер обмена, конфиги 19 IDE под каждую ОС, автообновление из меню
+            - Новый логотип приложения
+
+            ### Установка
+            **Windows:** скачай `AiPC_Win_1.1.exe`, запусти, в меню выбери «Настроить» — MCP пропишется в IDE сам.
+            **macOS / Linux:** скачай бинарь под свою ОС, сделай `chmod +x` и запусти в терминале; MCP для IDE ставится через `pip install aipc-sysik`.
