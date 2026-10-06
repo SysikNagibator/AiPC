@@ -24,8 +24,8 @@
 </p>
 
 <p align="center">
-  <video src="https://cdn.jsdelivr.net/gh/SysikNagibator/AiPC@28b59833546cff69648c5fdd1ba5512c61f0c4c3/assets/AiPC_promo_EN.mp4" controls width="640"></video><br>
-  <b>Video overview</b> · <a href="https://cdn.jsdelivr.net/gh/SysikNagibator/AiPC@28b59833546cff69648c5fdd1ba5512c61f0c4c3/assets/AiPC_promo_EN.mp4">direct link</a>
+  <video src="https://github.com/user-attachments/assets/7cd96d2e-84bc-418c-90c8-cc13f923b69f" controls width="640"></video><br>
+  <b>Video overview</b> · <a href="https://github.com/user-attachments/assets/7cd96d2e-84bc-418c-90c8-cc13f923b69f">direct link</a>
 </p>
 
 ---

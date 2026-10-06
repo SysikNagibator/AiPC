@@ -22,8 +22,8 @@
 </p>
 
 <p align="center">
-  <video src="https://cdn.jsdelivr.net/gh/SysikNagibator/AiPC@28b59833546cff69648c5fdd1ba5512c61f0c4c3/assets/AiPC_promo.mp4" controls width="640"></video><br>
-  <b>Видеообзор</b> · <a href="https://cdn.jsdelivr.net/gh/SysikNagibator/AiPC@28b59833546cff69648c5fdd1ba5512c61f0c4c3/assets/AiPC_promo.mp4">прямая ссылка</a>
+  <video src="https://github.com/user-attachments/assets/216933a9-e7f0-4126-8e8a-35b2f66343eb" controls width="640"></video><br>
+  <b>Видеообзор</b> · <a href="https://github.com/user-attachments/assets/216933a9-e7f0-4126-8e8a-35b2f66343eb">прямая ссылка</a>
 </p>
 
 ---
