@@ -67,6 +67,10 @@
 
 ## Почему AiPC
 
+<p align="center">
+  <img src="https://files.catbox.moe/lcq318.png" alt="AiPC by SYSIK">
+</p>
+
 | Обычные ограничения агента | С AiPC |
 |--------------------|-----------|
 | Слепой: нет экрана | `screen_see` — скриншот как нативный image-блок, курсор отмечен |
