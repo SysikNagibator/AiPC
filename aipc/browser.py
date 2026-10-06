@@ -18,17 +18,20 @@ def browser_tabs(port: int = 9222) -> dict:
         return {"ok": True, "tabs": out}
     except Exception as e:
         return {
-            "ok": False,
+            "ok": False, "reason": "error",
             "error": f"{e}. Запусти Chrome с --remote-debugging-port={port} (это делает пункт Настроить)",
         }
 
 
 def browser_goto(url: str, port: int = 9222) -> dict:
-    """Открывает URL в уже запущенном браузере (новая вкладка через CDP невозможна без ws — открываем через run)."""
+    """Открыть URL в браузере пользователя. Кавычки/метасимволы режем (инъекция невозможна)."""
     from .os_ops import run_cmd
 
-    if not url.startswith("http"):
+    url = "".join(c for c in str(url) if c not in '"`$;&|<>^%\n\r')
+    if not url.lower().startswith(("http://", "https://")):
         url = "https://" + url
+    if not url or len(url) > 2000:
+        return {"ok": False, "reason": "bad_arg", "error": "битый URL"}
     # Самый надежный способ для уже открытого Chrome — start с URL
     return run_cmd(f'start "" "{url}"')
 
@@ -88,8 +91,11 @@ def browser_eval(js: str, tab_id: str = "", port: int = 9222, timeout: int = 20)
             return {"ok": False, "reason": "timeout", "error": "CDP не ответил"}
         if "js_error" in res:
             return {"ok": False, "reason": "js_error", "error": res["js_error"]}
+        val = res.get("value")
+        if isinstance(val, str) and len(val) > 20000:
+            val = val[:20000] + f"...[обрезано, было {len(val)}]"
         return {"ok": True, "tab": {"id": target.get("id"), "title": target.get("title"),
-                                    "url": target.get("url")}, "result": res.get("value")}
+                                    "url": target.get("url")}, "result": val}
     except Exception as e:
         return {"ok": False, "reason": "error",
                 "error": f"{e}. Chrome нужен с --remote-debugging-port={port}"}

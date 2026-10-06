@@ -76,15 +76,26 @@ def test_codex_toml_and_continue(tmp_path):
 
 
 def test_only_if_snapshot(isolated_home):
-    # main пишется всегда, alt — только если main был ДО запуска
-    rep = I.configure_all_ides("C:\\Tools\\aipc.exe", ["mcp"])
+    # main пишется при create_missing, alt — только если main был ДО запуска
+    rep = I.configure_all_ides("C:\\Tools\\aipc.exe", ["mcp"], create_missing=True)
     names = [n for n, _, _ in rep]
     assert "Antigravity" in names and "Cursor" in names
     assert "Antigravity-alt" not in names and "Cursor-alt" not in names
-    rep2 = I.configure_all_ides("C:\\Tools\\aipc.exe", ["mcp"])
+    rep2 = I.configure_all_ides("C:\\Tools\\aipc.exe", ["mcp"], create_missing=True)
     assert "Antigravity-alt" in [n for n, _, _ in rep2]
-    rep3 = I.configure_all_ides("C:\\Tools\\aipc.exe", ["mcp"])
+    rep3 = I.configure_all_ides("C:\\Tools\\aipc.exe", ["mcp"], create_missing=True)
     assert all(("уже настроено" in m or "проверь вручную" in m) for _, _, m in rep3)
+
+
+def test_default_skips_missing_ides(isolated_home):
+    # По умолчанию чужие (отсутствующие) IDE не трогаем и файлы не создаём.
+    rep = I.configure_all_ides("C:\\Tools\\aipc.exe", ["mcp"])
+    assert rep == []
+    from pathlib import Path
+    import os
+
+    home = Path(os.environ.get("USERPROFILE"))
+    assert not (home / ".cursor" / "mcp.json").exists()
 
 
 def test_safety_upgrade(isolated_home):

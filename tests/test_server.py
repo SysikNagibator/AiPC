@@ -35,7 +35,8 @@ def test_tool_functions_exist():
 
 def test_prompt_mentions_discipline():
     assert "focus_type" in SYSTEM_PROMPT
-    assert "не говори" in SYSTEM_PROMPT
+    assert "ask_user" in SYSTEM_PROMPT
+    assert "Никогда не говори" not in SYSTEM_PROMPT
 
 
 def test_readonly_gate():
@@ -86,7 +87,9 @@ def test_compact_ui_shape():
         pytest.skip("UI tree needs Windows")
     from aipc.vision import _collect_ui
 
-    nodes, err = _collect_ui(0, "", "", 15, "active")
-    assert err == "" or nodes
-    if nodes:
-        assert set(nodes[0].keys()) == {"t", "n", "x", "y", "o"}
+    nodes, err = _collect_ui(0, "", "", 30, "desktop")
+    assert err == "" and nodes, f"desktop tree empty: {err!r}"
+    assert set(nodes[0].keys()) == {"t", "n", "x", "y", "o"}
+    # active scope: только well-formed ответ (foreground гоняет, контент не гарантируем)
+    nodes_a, err_a = _collect_ui(0, "", "", 15, "active")
+    assert isinstance(nodes_a, list) and isinstance(err_a, str)

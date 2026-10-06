@@ -1,10 +1,25 @@
 [project]
 name = "aipc-sysik"
-version = "1.0.7"
+version = "1.1"
 description = "AiPC by SYSIK — full agent access to the PC. (MCP + CLI)"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["rich>=13", "pyyaml>=6", "mcp>=1.0"]
+dependencies = [
+  "rich>=13",
+  "pyyaml>=6",
+  "mcp>=1.0",
+  "mss>=9",
+  "pillow>=10",
+  "pyautogui>=0.9",
+  "psutil>=5.9",
+  "paramiko>=3",
+  "ddgs>=6",
+  "websocket-client>=1.0",
+  "imageio-ffmpeg>=0.5",
+  "pygetwindow>=0.0.9; sys_platform == 'win32'",
+  "uiautomation>=2.0; sys_platform == 'win32'",
+  "pyaudiowpatch>=0.2.11; sys_platform == 'win32'",
+]
 
 [project.scripts]
 aipc = "aipc.__main__:main"

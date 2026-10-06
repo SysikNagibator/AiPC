@@ -9,6 +9,7 @@ if %errorlevel% neq 0 (
   exit /b 0
 )
 echo [AiPC] Установка...
+cd /d "%~dp0.."
 python -m pip install --upgrade pip
 python -m pip install -r "%~dp0..\requirements.txt"
 python -m aipc install

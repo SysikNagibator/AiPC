@@ -117,6 +117,8 @@ def add_to_system_path(path: str) -> tuple[bool, str]:
 
 def install_self_to_program_files() -> tuple[bool, str]:
     """Копирует exe в Program Files под каноническим именем + шим aipc.bat. Требует админа."""
+    if os.name != "nt":
+        return False, "Program Files — только Windows (на macOS/Linux: pip install aipc-sysik)"
     dst = Path(install_dir())
     try:
         dst.mkdir(parents=True, exist_ok=True)
@@ -179,6 +181,28 @@ def _home() -> Path:
     return Path(os.path.expanduser("~"))
 
 
+def _base_dirs(os_name: str | None = None, platform: str | None = None,
+               home=None, env=None) -> tuple[Path, Path]:
+    """(appdata, userprofile) с учётом ОС: Windows / macOS / Linux (XDG)."""
+    import os as _os
+    import sys as _sys
+
+    os_name = os_name if os_name is not None else _os.name
+    platform = platform if platform is not None else _sys.platform
+    env = env if env is not None else _os.environ
+    home = Path(home) if home is not None else _home()
+    if os_name == "nt":
+        appdata = Path(env.get("APPDATA", str(home / "AppData" / "Roaming")))
+        userprofile = Path(env.get("USERPROFILE", str(home)))
+    elif platform == "darwin":
+        appdata = home / "Library" / "Application Support"
+        userprofile = home
+    else:
+        appdata = Path(env.get("XDG_CONFIG_HOME", str(home / ".config")))
+        userprofile = home
+    return appdata, userprofile
+
+
 def ide_config_paths() -> list[tuple[str, Path, Path | None, str]]:
     """(имя IDE, путь к конфигу, only_if, writer).
 
@@ -186,8 +210,7 @@ def ide_config_paths() -> list[tuple[str, Path, Path | None, str]]:
     only_if: писать только если путь существует (не плодим мусор чужим IDE).
     """
     home = _home()
-    appdata = Path(os.environ.get("APPDATA", str(home / "AppData" / "Roaming")))
-    userprofile = Path(os.environ.get("USERPROFILE", str(home)))
+    appdata, userprofile = _base_dirs()
     main_antigravity = home / ".gemini" / "config" / "mcp_config.json"
     main_cursor = home / ".cursor" / "mcp.json"
     main_vscode = appdata / "Code" / "User" / "mcp_settings.json"
@@ -382,8 +405,22 @@ def _append_codex_toml(path: Path, command: str, args: list[str]) -> tuple[bool,
         return False, f"{path}: {e}"
 
 
-def configure_all_ides(command: str | None = None, args: list[str] | None = None) -> list[tuple[str, bool, str]]:
-    """Прописать aipc во все известные IDE. Прав админа не надо. Возвращает отчет."""
+def _ide_selected(name: str, only: list[str] | None) -> bool:
+    """Фильтр --ide: подстрока без учёта регистра (cursor, vscode, claude...)."""
+    if not only:
+        return True
+    low = name.lower()
+    return any(str(o).lower() in low for o in only)
+
+
+def configure_all_ides(command: str | None = None, args: list[str] | None = None,
+                       only: list[str] | None = None,
+                       create_missing: bool = False) -> list[tuple[str, bool, str]]:
+    """Прописать aipc в IDE. Прав админа не надо. Возвращает отчет.
+
+    only — только эти IDE (подстроки имён). create_missing=False (по умолчанию):
+    не создавать конфиги отсутствующих IDE — правим только существующие файлы.
+    """
     if command is None or args is None:
         command, args = mcp_server_entry()
     report: list[tuple[str, bool, str]] = []
@@ -392,7 +429,16 @@ def configure_all_ides(command: str | None = None, args: list[str] | None = None
     pre = {name: (only_if.exists() if only_if is not None else True) for name, _, only_if, _ in entries}
     for name, path, only_if, writer in entries:
         try:
+            if not _ide_selected(name, only):
+                continue
             if not pre.get(name, True):
+                continue
+            present = path.exists() or (only_if is not None and only_if.exists())
+            if not present and not create_missing:
+                # Молча пропускаем отсутствующие IDE; но при явном --ide
+                # говорим, что такой IDE нет (иначе тишина сбивает с толку).
+                if only:
+                    report.append((name, True, f"{path}: IDE нет — пропущено"))
                 continue
             if writer == "continue-yaml":
                 ok, msg = _write_continue_yaml(path, command, args)
@@ -406,8 +452,216 @@ def configure_all_ides(command: str | None = None, args: list[str] | None = None
     return report
 
 
+def preview_ide_entry(path: Path, writer: str, command: str,
+                      args: list[str]) -> str:
+    """Что изменится в конфиге IDE (без записи): короткий diff-текст."""
+    try:
+        if writer == "codex-toml":
+            existing = path.read_text(encoding="utf-8") if path.exists() else ""
+            if "[mcp_servers.aipc]" in existing:
+                return "без изменений (уже настроено)"
+            return "+ секция [mcp_servers.aipc]"
+        if writer == "continue-yaml":
+            if path.exists():
+                return "без изменений (файл есть, правим вручную)"
+            return "+ новый файл aipc.yaml"
+        key = {"mcpServers": "mcpServers.aipc", "opencode": "mcp.aipc",
+               "zed": "context_servers.aipc",
+               "vscode-mcp": "mcp.servers.aipc"}.get(writer, "aipc")
+        if not path.exists():
+            return f"+ новый файл, {key} = {command} {args}"
+        try:
+            data = json.loads(_strip_jsonc(path.read_text(encoding="utf-8")) or "{}")
+        except Exception:
+            return "! файл битый — запись перезапишет (бэкап .bak уже снят при записи)"
+        node: object = data
+        for part in key.split("."):
+            node = node.get(part, {}) if isinstance(node, dict) else {}
+        if isinstance(node, dict) and node.get("command") == command:
+            return "без изменений (уже настроено)"
+        old = json.dumps(node, ensure_ascii=False)[:120] if node else "—"
+        return f"{key}: {old} -> command={command}"
+    except Exception as e:
+        return f"не прочитал: {e}"
+
+
+def plan_install(only: list[str] | None = None,
+                 create_missing: bool = False) -> list[dict]:
+    """План установки БЕЗ записи: что будет изменено и как."""
+    command, args = mcp_server_entry()
+    plan: list[dict] = []
+    if is_frozen() and not is_installed():
+        plan.append({"kind": "program_files", "target": str(installed_exe()),
+                     "action": "copy",
+                     "detail": f"копия exe + шим {shim_name()}"})
+    else:
+        plan.append({"kind": "program_files", "target": install_dir(),
+                     "action": "skip",
+                     "detail": "dev-режим или уже на месте"})
+    plan.append({"kind": "path", "target": install_dir(), "action": "add",
+                 "detail": "HKLM PATH (нужен админ)"})
+    entries = ide_config_paths()
+    for name, path, only_if, writer in entries:
+        if not _ide_selected(name, only):
+            continue
+        present = path.exists() or (only_if is not None and only_if.exists())
+        if not present and not create_missing:
+            plan.append({"kind": "ide", "target": f"{name}: {path}",
+                         "action": "skip", "detail": "IDE нет"})
+            continue
+        plan.append({"kind": "ide", "target": f"{name}: {path}",
+                     "action": "write",
+                     "detail": preview_ide_entry(path, writer, command, args)})
+    return plan
+
+
+def _remove_json_entry(path: Path, writer: str) -> tuple[bool, str]:
+    """Убрать наш ключ aipc из JSON-конфига. Возвращает (ok, msg)."""
+    try:
+        if not path.exists():
+            return True, f"{path}: файла нет"
+        try:
+            data = json.loads(_strip_jsonc(path.read_text(encoding="utf-8")) or "{}")
+        except Exception:
+            return False, f"{path}: битый JSON — пропускаю (не трогаю)"
+        holder: dict | None = None
+        if writer == "mcpServers":
+            holder = data.get("mcpServers") if isinstance(data.get("mcpServers"), dict) else None
+        elif writer == "opencode":
+            holder = data.get("mcp") if isinstance(data.get("mcp"), dict) else None
+        elif writer == "zed":
+            holder = data.get("context_servers") if isinstance(data.get("context_servers"), dict) else None
+        elif writer == "vscode-mcp":
+            mcp = data.get("mcp") if isinstance(data.get("mcp"), dict) else None
+            holder = mcp.get("servers") if isinstance(mcp, dict) and isinstance(mcp.get("servers"), dict) else None
+        else:
+            return False, f"{path}: неизвестный writer {writer}"
+        if not holder or "aipc" not in holder:
+            return True, f"{path}: нас нет"
+        del holder["aipc"]
+        _save_json(path, data)
+        return True, f"{path}: убрано"
+    except Exception as e:
+        return False, f"{path}: {e}"
+
+
+def _remove_codex_block(path: Path) -> tuple[bool, str]:
+    try:
+        if not path.exists():
+            return True, f"{path}: файла нет"
+        text = path.read_text(encoding="utf-8")
+        if "[mcp_servers.aipc]" not in text:
+            return True, f"{path}: нас нет"
+        import re as _re
+
+        new = _re.sub(r"\n\[mcp_servers\.aipc\]\n(?:[^\[]*\n)?", "\n", text)
+        if new == text:  # запасной вариант: построчно
+            lines = [l for l in text.splitlines(keepends=True)
+                     if "mcp_servers.aipc" not in l]
+            new = "".join(lines)
+        path.write_text(new, encoding="utf-8")
+        return True, f"{path}: убрано"
+    except Exception as e:
+        return False, f"{path}: {e}"
+
+
+def _remove_continue_file(path: Path) -> tuple[bool, str]:
+    try:
+        if not path.exists():
+            return True, f"{path}: файла нет"
+        text = path.read_text(encoding="utf-8")
+        if "name: AiPC" not in text:
+            return False, f"{path}: чужой файл — не трогаю"
+        path.unlink()
+        return True, f"{path}: удалён наш файл"
+    except Exception as e:
+        return False, f"{path}: {e}"
+
+
+def uninstall_mcp(only: list[str] | None = None) -> list[tuple[str, bool, str]]:
+    """Убрать наши записи из конфигов IDE (чужие ключи не трогаем)."""
+    report: list[tuple[str, bool, str]] = []
+    for name, path, _only_if, writer in ide_config_paths():
+        if not _ide_selected(name, only):
+            continue
+        try:
+            if writer == "continue-yaml":
+                ok, msg = _remove_continue_file(path)
+            elif writer == "codex-toml":
+                ok, msg = _remove_codex_block(path)
+            else:
+                ok, msg = _remove_json_entry(path, writer)
+            report.append((name, ok, msg))
+        except Exception as e:
+            report.append((name, False, str(e)))
+    return report
+
+
+def remove_from_system_path(path: str) -> tuple[bool, str]:
+    """Убрать каталог из системного PATH (HKLM). Требует админа."""
+    if os.name != "nt":
+        return False, "только Windows"
+    try:
+        import winreg
+
+        key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment", 0, winreg.KEY_READ | winreg.KEY_WRITE)
+        try:
+            cur, _ = winreg.QueryValueEx(key, "Path")
+        except FileNotFoundError:
+            winreg.CloseKey(key)
+            return True, "PATH пуст"
+        parts = [p for p in cur.split(";") if p and p.lower().rstrip("\\") != path.lower().rstrip("\\")]
+        new = ";".join(parts)
+        if new == cur:
+            winreg.CloseKey(key)
+            return True, "нас нет в PATH"
+        winreg.SetValueEx(key, "Path", 0, winreg.REG_EXPAND_SZ, new)
+        winreg.CloseKey(key)
+        try:
+            HWND_BROADCAST, WM_SETTINGCHANGE = 0xFFFF, 0x1A
+            ctypes.windll.user32.SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, 0, "Environment", 0, 5000, None)
+        except Exception:
+            pass
+        return True, f"убрано из PATH: {path}"
+    except PermissionError:
+        return False, "нужны права админа"
+    except Exception as e:
+        return False, str(e)
+
+
+def uninstall_self(only: list[str] | None = None) -> list[tuple[str, bool, str]]:
+    """Полный откат: MCP-записи + PATH + наши файлы в Program Files."""
+    report: list[tuple[str, bool, str]] = []
+    for name, ok, msg in uninstall_mcp(only):
+        report.append((name, ok, msg))
+    ok, msg = remove_from_system_path(install_dir())
+    report.append(("PATH", ok, msg))
+    try:
+        dst = Path(install_dir())
+        removed = []
+        if dst.is_dir():
+            for child in dst.iterdir():
+                if not child.is_file():
+                    continue
+                n = child.name
+                if n == shim_name() or (n.startswith("AiPC_Win_") and n.lower().endswith(".exe")):
+                    try:
+                        child.unlink()
+                        removed.append(n)
+                    except Exception as e:
+                        report.append(("Program Files", False, f"{n}: {e}"))
+        report.append(("Program Files", True,
+                       f"убрано: {', '.join(removed) if removed else 'наших файлов нет'}"))
+    except Exception as e:
+        report.append(("Program Files", False, str(e)))
+    return report
+
+
 def privileged_self_install() -> int:
     """Шаг с правами админа: копия в Program Files + PATH. Вызывается как `aipc --self-install`."""
+    if os.name != "nt":
+        print("Эта установка — только Windows. На macOS/Linux: pip install aipc-sysik")
+        return 1
     print("=== AiPC: установка (админ) ===")
     ok1, msg1 = install_self_to_program_files()
     print(f"[1/2] {msg1}")
@@ -427,6 +681,16 @@ def _installed_is_fresh() -> bool:
         return False
 
 
+def _auto_register_enabled() -> bool:
+    """Можно ли трогать IDE-конфиги без явной команды (по умолчанию нет)."""
+    try:
+        from .config import load_config
+
+        return bool(load_config().get("installer", {}).get("auto_register", False))
+    except Exception:
+        return False
+
+
 def ensure_installed() -> str:
     """Гарантировать что exe в Program Files + MCP настроен. Возвращает путь к exe для работы.
 
@@ -437,11 +701,17 @@ def ensure_installed() -> str:
       сворачиваний и перезапусков. При отказе UAC — тоже продолжаем в меню с предупреждением.
     """
     if not is_frozen():
-        configure_all_ides()
+        if _auto_register_enabled():
+            configure_all_ides()
+        return str(current_exe())
+
+    if os.name != "nt":
+        # macOS/Linux: Program Files/PATH/UAC нет — только MCP по явной команде.
         return str(current_exe())
 
     if is_installed():
-        configure_all_ides(*mcp_server_entry())
+        if _auto_register_enabled():
+            configure_all_ides(*mcp_server_entry())
         return str(installed_exe())
 
     # Первый запуск не из Program Files
@@ -462,14 +732,17 @@ def ensure_installed() -> str:
         print()
         if ok:
             print("Установлено. Продолжаю в этом окне.")
-            configure_all_ides(str(installed_exe()), ["mcp"])
+            if _auto_register_enabled():
+                configure_all_ides(str(installed_exe()), ["mcp"])
             return str(current_exe())
         print("Не дождался установки (UAC отклонён или ошибка).")
         print("Работаю без установки — команда `aipc` и MCP в IDE появятся после установки.")
-        configure_all_ides(*mcp_server_entry())
+        if _auto_register_enabled():
+            configure_all_ides(*mcp_server_entry())
         return str(current_exe())
 
     # Уже админ, но лежим не там — ставим и продолжаем здесь же
     privileged_self_install()
-    configure_all_ides(*mcp_server_entry())
+    if _auto_register_enabled():
+        configure_all_ides(*mcp_server_entry())
     return str(current_exe())

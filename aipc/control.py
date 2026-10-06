@@ -8,12 +8,22 @@ import time
 
 
 def _rel_to_abs(x: int, y: int) -> tuple[int, int]:
-    """Модель шлет 0-1000 относительные. Конвертим в пиксели."""
+    """Модель шлет 0-1000 относительные. Конвертим в пиксели.
+
+    Нижняя граница 2px: ровно (0,0) у pyautogui включает FAILSAFE-аварийку.
+    """
+    def clamp(v: int, limit: int) -> int:
+        try:
+            v = int(v)
+        except (TypeError, ValueError):
+            v = 0
+        return max(2, min(v, limit))
+
     if 0 <= x <= 1000 and 0 <= y <= 1000:
         try:
             import pyautogui  # type: ignore
             sw, sh = pyautogui.size()
-            return int(x / 1000 * sw), int(y / 1000 * sh)
+            return clamp(int(x / 1000 * sw), sw), clamp(int(y / 1000 * sh), sh)
         except Exception:
             pass
     return x, y
@@ -22,7 +32,7 @@ def _rel_to_abs(x: int, y: int) -> tuple[int, int]:
 def mouse_move(x: int, y: int) -> dict:
     try:
         import pyautogui  # type: ignore
-    except ImportError:
+    except Exception:
         return {"ok": False, "error": "нет pyautogui. pip install pyautogui"}
     try:
         ax, ay = _rel_to_abs(x, y)
@@ -35,13 +45,16 @@ def mouse_move(x: int, y: int) -> dict:
 def mouse_click(x: int, y: int, button: str = "left") -> dict:
     try:
         import pyautogui  # type: ignore
-    except ImportError:
+    except Exception:
         return {"ok": False, "error": "нет pyautogui"}
+    btn = str(button or "left").lower()
+    if btn not in ("left", "middle", "right"):
+        return {"ok": False, "reason": "bad_arg", "error": f"button только left/middle/right, дали: {button!r}"}
     try:
         ax, ay = _rel_to_abs(x, y)
-        pyautogui.click(ax, ay, button=button)
+        pyautogui.click(ax, ay, button=btn)
         time.sleep(0.3)
-        return {"ok": True, "x": ax, "y": ay, "button": button}
+        return {"ok": True, "x": ax, "y": ay, "button": btn}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
@@ -50,7 +63,7 @@ def mouse_drag(x1: int, y1: int, x2: int, y2: int, modifier: str = "") -> dict:
     """Драг 0-1000. modifier: ctrl/shift/alt — держать во время драга."""
     try:
         import pyautogui  # type: ignore
-    except ImportError:
+    except Exception:
         return {"ok": False, "error": "нет pyautogui"}
     try:
         ax1, ay1 = _rel_to_abs(x1, y1)
@@ -103,8 +116,37 @@ def _clipboard_procs():
     return kernel32, user32
 
 
-def _set_clipboard(text: str) -> bool:
-    """Положить юникод-текст в буфер обмена. Только Windows."""
+def _keyboard_layout() -> int:
+    """LANGID активной раскладки (0x409 = US English). 0 = не определили."""
+    try:
+        import ctypes
+
+        user32 = ctypes.windll.user32
+        hwnd = user32.GetForegroundWindow()
+        tid = user32.GetWindowThreadProcessId(hwnd, None)
+        return user32.GetKeyboardLayout(tid) & 0xFFFF
+    except Exception:
+        return 0
+
+
+def _posix_clipboard_cmds():
+    """Команды буфера обмена на macOS/Linux: (запись, чтение) или (None, None)."""
+    import shutil
+    import sys as _sys
+
+    if _sys.platform == "darwin":
+        return (["pbcopy"], ["pbpaste"])
+    if shutil.which("xclip"):
+        return (["xclip", "-selection", "clipboard"],
+                ["xclip", "-selection", "clipboard", "-o"])
+    if shutil.which("xsel"):
+        return (["xsel", "--clipboard", "--input"],
+                ["xsel", "--clipboard", "--output"])
+    return (None, None)
+
+
+def _set_clipboard(text: str, retries: int = 5) -> bool:
+    """Положить юникод-текст в буфер обмена Windows. С ретраями (буфер часто занят)."""
     import os as _os
 
     if _os.name != "nt":
@@ -127,7 +169,13 @@ def _set_clipboard(text: str) -> bool:
             return False
         ctypes.memmove(lock, buf, size)
         kernel32.GlobalUnlock(hmem)
-        if not user32.OpenClipboard(None):
+        import time as _time
+
+        for _ in range(max(1, retries)):
+            if user32.OpenClipboard(None):
+                break
+            _time.sleep(0.12)
+        else:
             kernel32.GlobalFree(hmem)
             return False
         try:
@@ -144,6 +192,23 @@ def _set_clipboard(text: str) -> bool:
 
 def clipboard_set(text: str) -> dict:
     """Положить текст в буфер обмена."""
+    import os as _os
+
+    if _os.name != "nt":
+        import subprocess as _sp
+
+        set_cmd, _ = _posix_clipboard_cmds()
+        if not set_cmd:
+            from .errors import err
+            return err("not_supported", "нет xclip/xsel (Linux) для буфера обмена",
+                       hint="установи: sudo apt install xclip")
+        try:
+            _sp.run(set_cmd, input=str(text).encode("utf-8"),
+                    timeout=10, check=True)
+            return {"ok": True, "len": len(text)}
+        except Exception as e:
+            from .errors import err
+            return err("error", f"буфер недоступен: {e}")
     if _set_clipboard(text):
         return {"ok": True, "len": len(text)}
     return {"ok": False, "error": "буфер недоступен (только Windows)"}
@@ -154,7 +219,20 @@ def clipboard_get() -> dict:
     import os as _os
 
     if _os.name != "nt":
-        return {"ok": False, "error": "только Windows"}
+        import subprocess as _sp
+
+        _, get_cmd = _posix_clipboard_cmds()
+        if not get_cmd:
+            from .errors import err
+            return err("not_supported", "нет xclip/xsel (Linux) для буфера обмена",
+                       hint="установи: sudo apt install xclip")
+        try:
+            r = _sp.run(get_cmd, capture_output=True, timeout=10, check=True)
+            return {"ok": True,
+                    "text": r.stdout.decode("utf-8", errors="replace")}
+        except Exception as e:
+            from .errors import err
+            return err("error", f"буфер недоступен: {e}")
     try:
         import ctypes
 
@@ -287,12 +365,18 @@ def type_text(text: str) -> dict:
         import time as _time
 
         import pyautogui  # type: ignore
-    except ImportError:
+    except Exception:
         return {"ok": False, "reason": "missing_dep", "error": "нет pyautogui. pip install pyautogui"}
     if not text:
         return {"ok": False, "reason": "bad_arg", "error": "пустой текст"}
     try:
-        if text.isascii() and len(text) <= TYPE_FAST_LIMIT:
+        # Посимвольно печатаем ТОЛЬКО маленький ASCII на US-раскладке Windows:
+        # typewrite шлёт символы через физические клавиши — на русской
+        # раскладке "ABC" превратилось бы в "ФИС". Иначе — вставка через буфер.
+        import os as _os2
+
+        layout_us = (_os2.name != "nt") or (_keyboard_layout() in (0x409,))
+        if text.isascii() and len(text) <= TYPE_FAST_LIMIT and layout_us:
             pyautogui.typewrite(text, interval=0.01)
             return {"ok": True, "len": len(text), "method": "keys"}
         # Кусками через буфер: быстро и держит любой юникод
@@ -325,7 +409,7 @@ def press_key(keys: list) -> dict:
     """keys напр. ['ctrl','t'] или ['enter']."""
     try:
         import pyautogui  # type: ignore
-    except ImportError:
+    except Exception:
         return {"ok": False, "error": "нет pyautogui. pip install pyautogui"}
     try:
         if not keys:
@@ -333,8 +417,21 @@ def press_key(keys: list) -> dict:
         norm = [_KEY_ALIASES.get(str(k).lower(), str(k).lower()) for k in keys]
         if len(norm) == 1:
             pyautogui.press(norm[0])
-        else:
-            pyautogui.hotkey(*norm)
+            return {"ok": True, "keys": norm}
+        # Вручную вместо hotkey(): если средняя клавиша невалидна,
+        # hotkey() роняет исключение с зажатыми модами (Ctrl залипает навсегда).
+        held: list = []
+        try:
+            for k in norm[:-1]:
+                pyautogui.keyDown(k)
+                held.append(k)
+            pyautogui.press(norm[-1])
+        finally:
+            for k in reversed(held):
+                try:
+                    pyautogui.keyUp(k)
+                except Exception:
+                    pass
         return {"ok": True, "keys": norm}
     except Exception as e:
         return {"ok": False, "error": str(e)}
@@ -344,7 +441,7 @@ def key_down(key: str) -> dict:
     """Зажать клавишу (shift-выделение, игры, хоткеи). Пару закрывает key_up."""
     try:
         import pyautogui  # type: ignore
-    except ImportError:
+    except Exception:
         return {"ok": False, "reason": "missing_dep", "error": "нет pyautogui"}
     try:
         k = _KEY_ALIASES.get(key.lower(), key.lower())
@@ -358,7 +455,7 @@ def key_up(key: str) -> dict:
     """Отпустить клавишу, зажатую через key_down."""
     try:
         import pyautogui  # type: ignore
-    except ImportError:
+    except Exception:
         return {"ok": False, "reason": "missing_dep", "error": "нет pyautogui"}
     try:
         k = _KEY_ALIASES.get(key.lower(), key.lower())
@@ -376,27 +473,13 @@ def mouse_right_click(x: int, y: int) -> dict:
 def mouse_middle_click(x: int, y: int) -> dict:
     """Средний клик. Координаты 0-1000."""
     return mouse_click(x, y, "middle")
-    """Двойной клик. Координаты 0-1000."""
-    try:
-        import pyautogui  # type: ignore
-    except ImportError:
-        return {"ok": False, "error": "нет pyautogui. pip install pyautogui"}
-    try:
-        ax, ay = _rel_to_abs(x, y)
-        pyautogui.doubleClick(ax, ay)
-        import time as _time
-
-        _time.sleep(0.3)
-        return {"ok": True, "x": ax, "y": ay}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
 
 
 def mouse_double_click(x: int, y: int) -> dict:
     """Двойной клик. Координаты 0-1000."""
     try:
         import pyautogui  # type: ignore
-    except ImportError:
+    except Exception:
         return {"ok": False, "reason": "missing_dep", "error": "нет pyautogui. pip install pyautogui"}
     try:
         ax, ay = _rel_to_abs(x, y)
@@ -415,12 +498,20 @@ def focus_type(title_substr: str, text: str, timeout: float = 8.0) -> dict:
     Убирает целый класс багов «напечатал не туда»: печать идёт только
     в проверенное foreground-окно.
     """
-    from .vision import window_focus
+    from .vision import get_active_window, window_focus
 
     f = window_focus(title_substr, timeout=timeout, verify=True)
     if not f.get("ok"):
         return {"ok": False, "reason": f.get("reason", "not_focused"),
                 "error": f"не печатаю: {f.get('error')}", "focus": f}
+    # Фокус мог уплыть за миллисекунды между проверкой и печатью — перепроверяем
+    try:
+        fg = (get_active_window().get("title") or "")
+        if title_substr.lower() not in fg.lower():
+            return {"ok": False, "reason": "not_focused",
+                    "error": f"фокус уплыл перед печатью, впереди: {fg[:80]!r}", "focus": f}
+    except Exception:
+        pass
     t = type_text(text)
     t["focus_title"] = f.get("title")
     if not t.get("ok"):
@@ -429,18 +520,31 @@ def focus_type(title_substr: str, text: str, timeout: float = 8.0) -> dict:
 
 
 def open_app(name_or_path: str) -> dict:
-    """notepad/calc/chrome/путь к exe."""
+    """notepad/calc/chrome/путь к exe. Метасимволы shell вычищаем (инъекция невозможна)."""
+    safe = "".join(c for c in str(name_or_path) if c not in '"`$;&|<>^%')
+    if not safe.strip():
+        return {"ok": False, "reason": "bad_arg", "error": "пустое имя"}
     try:
-        if os.name == "nt":
-            if os.path.exists(name_or_path):
-                os.startfile(name_or_path)  # type: ignore[attr-defined]
-                return {"ok": True, "app": name_or_path}
-            # через start чтобы сработали алиасы Windows
-            subprocess.Popen(f'start "" "{name_or_path}"', shell=True)
-            return {"ok": True, "app": name_or_path}
-        # Linux/macOS
-        opener = "open" if sys.platform == "darwin" else "xdg-open"
-        subprocess.Popen([opener, name_or_path])
-        return {"ok": True, "app": name_or_path}
+        from .platform import backend
+
+        backend("apps").open(safe)
+        return {"ok": True, "app": safe}
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+def mouse_position() -> dict:
+    """Где сейчас курсор: пиксели + 0-1000."""
+    try:
+        import pyautogui  # type: ignore
+    except Exception:
+        return {"ok": False, "reason": "missing_dep", "error": "нет pyautogui"}
+    try:
+        import mss  # type: ignore
+
+        mx, my = pyautogui.position()
+        sw, sh = pyautogui.size()
+        return {"ok": True, "pixels": [mx, my],
+                "rel": [int(mx / sw * 1000), int(my / sh * 1000)]}
+    except Exception as e:
+        return {"ok": False, "reason": "error", "error": str(e)}

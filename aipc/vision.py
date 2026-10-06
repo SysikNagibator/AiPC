@@ -76,7 +76,7 @@ def screen_region(x: int, y: int, w: int, h: int, monitor: int = 0, max_width: i
     try:
         from PIL import Image  # type: ignore  # noqa (проверка зависимости)
         import mss  # type: ignore  # noqa
-    except ImportError as e:
+    except Exception as e:
         return {"ok": False, "error": f"нет зависимостей экрана: {e}. pip install mss pillow"}
 
     x, y = max(0, min(1000, x)), max(0, min(1000, y))
@@ -93,7 +93,7 @@ def get_active_window() -> dict:
     """Активное окно: заголовок + прямоугольник + maximized."""
     try:
         import pygetwindow as gw  # type: ignore
-    except ImportError:
+    except Exception:
         return {"ok": False, "error": "нет pygetwindow. pip install pygetwindow"}
     try:
         w = gw.getActiveWindow()
@@ -109,11 +109,11 @@ def window_manage(title_substr: str, action: str = "minimize") -> dict:
     """Окно: minimize/maximize/restore/close по подстроке заголовка."""
     valid = ("minimize", "maximize", "restore", "close")
     if action not in valid:
-        return {"ok": False, "error": f"action только {valid}"}
+        return {"ok": False, "reason": "bad_arg", "error": f"action только {valid}"}
     try:
         import pygetwindow as gw  # type: ignore
-    except ImportError:
-        return {"ok": False, "error": "нет pygetwindow. pip install pygetwindow"}
+    except Exception:
+        return {"ok": False, "reason": "missing_dep", "error": "нет pygetwindow. pip install pygetwindow"}
     try:
         for w in gw.getAllWindows():
             if title_substr.lower() in (w.title or "").lower():
@@ -124,13 +124,13 @@ def window_manage(title_substr: str, action: str = "minimize") -> dict:
                         try:
                             w.close()
                         except Exception as e:
-                            return {"ok": False, "error": str(e)}
+                            return {"ok": False, "reason": "error", "error": str(e)}
                     else:
                         raise
                 return {"ok": True, "title": w.title, "action": action}
-        return {"ok": False, "error": f"окно не найдено: {title_substr}"}
+        return {"ok": False, "reason": "not_found", "error": f"окно не найдено: {title_substr}"}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False, "reason": "error", "error": str(e)}
 
 
 def ui_snapshot(max_nodes: int = 200, monitor: int = 0, role: str = "", name_contains: str = "",
@@ -145,7 +145,7 @@ def ui_snapshot(max_nodes: int = 200, monitor: int = 0, role: str = "", name_con
 def windows_list(limit: int = 50) -> dict:
     try:
         import pygetwindow as gw  # type: ignore
-    except ImportError:
+    except Exception:
         return {"ok": False, "error": "нет pygetwindow. pip install pygetwindow"}
     try:
         out = []
@@ -204,7 +204,7 @@ def window_focus(title_substr: str, timeout: float = 8.0, verify: bool = True) -
 
     try:
         import pygetwindow as gw  # type: ignore
-    except ImportError:
+    except Exception:
         return {"ok": False, "reason": "missing_dep", "error": "нет pygetwindow"}
     needle = (title_substr or "").lower()
     if not needle:
@@ -311,7 +311,7 @@ def _collect_ui(monitor: int = 0, role: str = "", name_contains: str = "", max_n
     """Общий сборщик UI-дерева. scope=active (только окно впереди, быстро) или desktop."""
     try:
         import uiautomation as auto  # type: ignore
-    except ImportError:
+    except Exception:
         return [], "нет uiautomation. pip install uiautomation (только Windows)"
     try:
         mon = _monitor_rect(monitor)
@@ -323,15 +323,20 @@ def _collect_ui(monitor: int = 0, role: str = "", name_contains: str = "", max_n
 
     root = None
     if scope == "active":
-        try:
-            import pygetwindow as gw  # type: ignore
+        import time as _time
 
-            w = gw.getActiveWindow()
-            hwnd = int(getattr(w, "_hWnd", 0) or 0) if w else 0
-            if hwnd:
-                root = auto.ControlFromHandle(hwnd)
-        except Exception:
-            root = None
+        for _ in range(3):  # окно могли закрыть/переключить прямо сейчас — ретраим
+            try:
+                import pygetwindow as gw  # type: ignore
+
+                w = gw.getActiveWindow()
+                hwnd = int(getattr(w, "_hWnd", 0) or 0) if w else 0
+                if hwnd:
+                    root = auto.ControlFromHandle(hwnd)
+                    break
+            except Exception:
+                root = None
+            _time.sleep(0.3)
     if root is None:
         if scope == "active":
             pass  # упадём ниже на GetRootControl? Нет — честно скажем
@@ -408,7 +413,7 @@ def wait_for_window(title: str, timeout: float = 15.0) -> dict:
     """Ждать пока откроется окно с подстрокой в заголовке."""
     try:
         import pygetwindow as gw  # type: ignore
-    except ImportError:
+    except Exception:
         return {"ok": False, "reason": "missing_dep", "error": "нет pygetwindow"}
     found = _poll(timeout, 0.5, lambda: [w.title for w in gw.getAllWindows()
                                          if title.lower() in (w.title or "").lower()][:1])
@@ -471,7 +476,7 @@ def window_find(substring: str, limit: int = 10) -> dict:
     """Нечёткий поиск окон: все совпадения с прямоугольниками."""
     try:
         import pygetwindow as gw  # type: ignore
-    except ImportError:
+    except Exception:
         return {"ok": False, "reason": "missing_dep", "error": "нет pygetwindow"}
     try:
         out = []
@@ -519,3 +524,70 @@ def screen_info() -> dict:
     return {"ok": True, "monitors": mons, "count": len(mons),
             "primary": mons[0] if mons else {}, "dpi": dpi, "scale_percent": scale,
             "note": "0-1000 модели = доля от ширины/высоты монитора"}
+
+
+def _grab_abs(left: int, top: int, width: int, height: int):
+    """Захват по абсолютным пикселям виртуального экрана -> PIL.Image."""
+    import mss  # type: ignore
+    from PIL import Image  # type: ignore
+
+    width, height = max(2, width), max(2, height)
+    with mss.mss() as sct:
+        shot = sct.grab({"left": left, "top": top, "width": width, "height": height})
+    return Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")
+
+
+def screen_burst(count: int = 5, interval: float = 0.5, max_width: int = 800, monitor: int = 0) -> dict:
+    """Серия кадров подряд (анимации, прогресс-бары, загрузки). Каждый кадр с меткой t."""
+    import base64
+    import time as _time
+
+    count = max(1, min(10, count))
+    interval = max(0.2, min(5.0, interval))
+    frames = []
+    try:
+        for i in range(count):
+            if i:
+                _time.sleep(interval)
+            img = _fit_width(_render_full(monitor, max_width, cursor=(i == count - 1)), max_width)
+            frames.append({"image_b64": base64.b64encode(_encode_bytes(img)).decode(),
+                           "w": img.width, "h": img.height, "t": round(i * interval, 2)})
+        return {"ok": True, "frames": frames, "count": len(frames)}
+    except ImportError as e:
+        return {"ok": False, "reason": "missing_dep", "error": str(e)}
+    except Exception as e:
+        return {"ok": False, "reason": "error", "error": str(e)}
+
+
+def window_shot(title_substr: str, max_width: int = 1000) -> dict:
+    """Скриншот конкретного окна по подстроке заголовка (без всего экрана)."""
+    try:
+        import pygetwindow as gw  # type: ignore
+    except Exception:
+        return {"ok": False, "reason": "missing_dep", "error": "нет pygetwindow"}
+    try:
+        target = None
+        for w in gw.getAllWindows():
+            if title_substr.lower() in (w.title or "").lower():
+                target = w
+                break
+        if target is None:
+            return {"ok": False, "reason": "not_found", "error": f"окно не найдено: {title_substr}"}
+        img = _fit_width(_grab_abs(target.left, target.top, target.width, target.height), max_width)
+        res = _encode(img, 0)
+        res["title"] = target.title
+        return res
+    except Exception as e:
+        return {"ok": False, "reason": "error", "error": str(e)}
+
+
+def pixel_color(x: int, y: int, monitor: int = 0) -> dict:
+    """Цвет пикселя 0-1000. Дешёвая проверка без полного скриншота."""
+    try:
+        img = _grab_region(monitor, x, y, 2, 2)
+        r, g, b = img.convert("RGB").getpixel((0, 0))
+        return {"ok": True, "rgb": [r, g, b], "hex": f"#{r:02x}{g:02x}{b:02x}"}
+    except ImportError as e:
+        return {"ok": False, "reason": "missing_dep", "error": str(e)}
+    except Exception as e:
+        return {"ok": False, "reason": "error", "error": str(e)}

@@ -1,0 +1,48 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # release artifacts
+  id-token: write # SLSA provenance
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            pattern: "AiPC_Win_*.exe"
+          - os: macos-latest
+            pattern: "AiPC_macOS_*"
+          - os: ubuntu-latest
+            pattern: "AiPC_Linux_*"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements.txt
+      - run: python -m compileall -q aipc tools
+      - run: python -m pytest tests -q
+      - run: python tools/gen_tools_table.py --check
+      - name: Build binary
+        run: python tools/build_all.py
+      - name: SLSA provenance (binary + sums)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/${{ matrix.pattern }}
+            dist/SHA256SUMS.txt
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aipc-${{ matrix.os }}
+          path: |
+            dist/${{ matrix.pattern }}
+            dist/SHA256SUMS.txt

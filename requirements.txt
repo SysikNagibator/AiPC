@@ -4,11 +4,14 @@ mcp>=1.0
 mss>=9
 pillow>=10
 pyautogui>=0.9
-pygetwindow>=0.0.9
-uiautomation>=2.0
 psutil>=5.9
 paramiko>=3
 ddgs>=6
-pyinstaller>=6
 websocket-client>=1.0
+imageio-ffmpeg>=0.5
+pyinstaller>=6
 pytest>=8
+# Windows-only (ignored on macOS/Linux):
+pygetwindow>=0.0.9; sys_platform == "win32"
+uiautomation>=2.0; sys_platform == "win32"
+pyaudiowpatch>=0.2.11; sys_platform == "win32"

@@ -11,5 +11,7 @@ set EXE=AiPC_Win_%VER%.exe
 set EXC=--exclude-module torch --exclude-module ultralytics --exclude-module cv2 --exclude-module numpy --exclude-module tkinter --exclude-module Tkinter --exclude-module PIL.ImageTk --exclude-module matplotlib --exclude-module scipy --exclude-module pandas --exclude-module sklearn --exclude-module tensorflow --exclude-module IPython --exclude-module pytest --exclude-module _pytest --exclude-module notebook
 pyinstaller --onefile --name %EXE:.exe=% --console --icon assets\AiPC.ico --version-file tools\version_info.txt %EXC% tools/exe_entry.py
 pyinstaller --onefile --name AiPC-Setup --console --uac-admin --icon assets\AiPC.ico --version-file tools\version_info.txt %EXC% tools/setup_entry.py
-echo Готово: dist\%EXE% и dist\AiPC-Setup.exe
+certutil -hashfile dist\%EXE% SHA256 > dist\SHA256SUMS.txt
+certutil -hashfile dist\AiPC-Setup.exe SHA256 >> dist\SHA256SUMS.txt
+echo Готово: dist\%EXE% и dist\AiPC-Setup.exe (+ SHA256SUMS.txt — приложи к релизу)
 pause
