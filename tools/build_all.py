@@ -13,6 +13,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass  # раннеры Windows бывают с cp1252-консолью
+
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
 

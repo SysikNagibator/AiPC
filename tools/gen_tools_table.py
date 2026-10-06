@@ -11,6 +11,12 @@ import re
 import sys
 from pathlib import Path
 
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass  # под pytest/capture нечего перенастраивать
+
 ROOT = Path(__file__).resolve().parent.parent
 
 # Группы README: имя -> ожидаемые tools (проверяем покрытие всех 70).
