@@ -1,4 +1,6 @@
 """Этап 4.3: единый формат ошибок {"ok": false, "reason": ..., "hint"?}."""
+import os as _os
+
 from aipc.errors import denied, err
 
 
@@ -27,7 +29,10 @@ def test_fs_denials_schema(tmp_path):
     r = _check(O.fs_read(str(tmp_path / "нет-такого.txt")), "not_found")
     assert "hint" not in r  # hint только у запретов/подсказываемых
     _check(O.fs_write("C:\\Windows\\System32\\x.txt", "t"), "denied")
-    _check(O.fs_delete("C:\\", recursive=True), "denied")
+    # Удаление корня ФС запрещено; сам корень зависит от ОС
+    # ("C:\\" на Linux — относительное имя файла, а не корень диска).
+    _check(O.fs_delete("C:\\" if _os.name == "nt" else "/", recursive=True),
+           "denied")
 
 
 def test_denied_have_hints(tmp_path):

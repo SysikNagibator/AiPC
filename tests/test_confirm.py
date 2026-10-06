@@ -1,5 +1,6 @@
 """Этап 1.1: классификация рисков, серверные подтверждения, timed-разрешения."""
 import json
+import os
 
 import pytest
 
@@ -242,6 +243,8 @@ def test_console_pick_mapping(monkeypatch):
 def test_confirm_dialog_variations(monkeypatch):
     from aipc import notify as NT
 
+    # Ветка TaskDialog — только Windows: форсируем, как test_posix форсирует posix.
+    monkeypatch.setattr(os, "name", "nt")
     monkeypatch.setattr(NT, "_can_popup", lambda: True)
     # выбор "1 час" (id 102) при пресетах [10, 60]
     monkeypatch.setattr(NT, "_taskdialog_buttons", lambda *a, **k: 102)
@@ -260,6 +263,7 @@ def test_confirm_dialog_variations(monkeypatch):
 def test_confirm_legacy_fallback(monkeypatch):
     from aipc import notify as NT
 
+    monkeypatch.setattr(os, "name", "nt")
     monkeypatch.setattr(NT, "_can_popup", lambda: True)
     monkeypatch.setattr(NT, "_taskdialog_buttons", lambda *a, **k: "error")
     answers = iter(["yes", "yes"])

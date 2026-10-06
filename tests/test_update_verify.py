@@ -2,8 +2,19 @@
 import hashlib
 import io
 import json
+import os as _os
+import sys as _sys
 
 from aipc import maintenance as M
+
+
+def _fake_body(fill: bytes = b"\x00") -> bytes:
+    """Фейковый бинарь с магией под текущую ОС (self_update её проверяет)."""
+    if _os.name == "nt":
+        return b"MZ" + fill * 200
+    if _sys.platform == "darwin":
+        return b"\xcf\xfa\xed\xfe" + fill * 200
+    return b"\x7fELF" + fill * 200
 
 
 def _resp(data: bytes):
@@ -75,7 +86,7 @@ def _fake_release(monkeypatch, exe_bytes: bytes, sums_text: str | None):
 
 
 def test_no_sums_aborts(monkeypatch, capsys):
-    _fake_release(monkeypatch, b"MZ" + b"\x00" * 100, None)
+    _fake_release(monkeypatch, _fake_body(), None)
     assert M.self_update() == 1
     assert "SHA256SUMS" in capsys.readouterr().out
 
@@ -116,18 +127,24 @@ def test_per_os_sums_name(monkeypatch):
 
 def test_hash_mismatch_aborts(monkeypatch, capsys):
     sums = "00" * 32 + "  AiPC_Win_9.9.9.exe\n"
-    _fake_release(monkeypatch, b"MZ" + b"\x11" * 200, sums)
+    _fake_release(monkeypatch, _fake_body(b"\x11"), sums)
     assert M.self_update() == 1
     out = capsys.readouterr().out
     assert "НЕ СОВПАЛ" in out
 
 
 def test_hash_match_proceeds(monkeypatch, capsys):
-    body = b"MZ" + b"\x22" * 200
+    body = _fake_body(b"\x22")
     sums = hashlib.sha256(body).hexdigest() + "  AiPC_Win_9.9.9.exe\n"
     _fake_release(monkeypatch, body, sums)
     started = []
     monkeypatch.setattr(M.subprocess, "Popen",
                         lambda *a, **k: started.append(a) or None)
     assert M.self_update() == 0
-    assert started and "СОШ" in capsys.readouterr().out.upper()
+    out = capsys.readouterr().out
+    assert "СОШ" in out.upper()
+    if _os.name == "nt":
+        assert started  # Windows: новый файл сам себя ставит
+    else:
+        # macOS/Linux: автоустановки нет — файл проверен, дальше руками.
+        assert not started and "Готово" in out
