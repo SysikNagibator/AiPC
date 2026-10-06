@@ -70,7 +70,7 @@ forbids that answer and requires acting through AiPC tools.
 ## Why AiPC
 
 <p align="center">
-  <img src="https://files.catbox.moe/e9o2sz.png" alt="AiPC by SYSIK">
+  <img src="https://files.catbox.moe/fgalio.png" alt="AiPC by SYSIK">
 </p>
 
 | Usual agent limits | With AiPC |
