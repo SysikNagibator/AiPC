@@ -23,6 +23,11 @@
   <b>RU README: <a href="README_RU.md">Russian version</a></b> · Skills: <a href="SKILL.md">SKILL.md</a> · IDE matrix: <a href="docs/IDES.md">docs/IDES.md</a>
 </p>
 
+<p align="center">
+  <video src="__DEMO_URL__" controls width="640"></video><br>
+  <b>Video overview</b> · <a href="__DEMO_URL__">direct link</a>
+</p>
+
 ---
 
 ## Contents
@@ -331,7 +336,8 @@ AiPC/
                    # maintenance (update/doctor/kill) · menu · policy/audit
   mcp_presets/     # ready-made MCP configs (16 files)
   assets/          # logo (AiPC_Logo.svg/png) + app icons: AiPC.ico (Windows),
-                   # AiPC.icns (macOS) — visible on light and dark themes
+                   # AiPC.icns (macOS) — visible on light and dark themes;
+                   # AiPC_promo*.mp4 — video overviews (EN/RU) for README
   tools/           # build_exe.bat · build_icon.py · sign.bat · version_info.txt
   tests/           # pytest: policy, installer merge, server (19 tests)
   docs/            # IDES.md (40 IDEs) · SIGNING.md (SmartScreen)
