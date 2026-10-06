@@ -24,8 +24,8 @@
 </p>
 
 <p align="center">
-  <video src="__DEMO_URL__" controls width="640"></video><br>
-  <b>Video overview</b> · <a href="__DEMO_URL__">direct link</a>
+  <video src="https://cdn.jsdelivr.net/gh/SysikNagibator/AiPC@28b59833546cff69648c5fdd1ba5512c61f0c4c3/assets/AiPC_promo_EN.mp4" controls width="640"></video><br>
+  <b>Video overview</b> · <a href="https://cdn.jsdelivr.net/gh/SysikNagibator/AiPC@28b59833546cff69648c5fdd1ba5512c61f0c4c3/assets/AiPC_promo_EN.mp4">direct link</a>
 </p>
 
 ---
