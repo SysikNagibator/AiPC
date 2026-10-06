@@ -1,0 +1,20 @@
+╭──────────────────────────────────────────────────────────────────────────╮
+│ ▄▀█  █  █▀█ █▀▀   by SYSIK                                          v1.1 │
+│ █▀█  █  █▀▀ █▄▄   a real PC for your agent                               │
+│ core ● running   mode ask   70 tools                                     │
+╰──────────────────────────────────────────────────────────────────────────╯
+
+ ❯ 1  Launch AiPC-Core                background server, IDE-style handshake
+   2  Stop                            only our own process
+   3  Status & self-test              screen, mouse, terminal, MCP
+
+   4  Diagnostics                     install, PATH, IDE configs
+   5  Check updates                   compare with GitHub releases
+
+   6  Setup                           mode, IDE, browser, SSH
+   7  Service                         reinstall, MCP, reset
+   8  Logs                            last 20 lines of audit.log
+
+   Q  Exit
+
+ ↑↓ W S select   Enter open   1–8 quick   Q exit   L lang

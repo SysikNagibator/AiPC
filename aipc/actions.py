@@ -9,9 +9,6 @@ from .config import config_dir, ensure_default_config, load_config
 
 
 def _rich():
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.align import Align
     from .logo import MENU_WIDTH, THEME
     try:
         from .menu import _ensure_utf8
@@ -19,21 +16,21 @@ def _rich():
         _ensure_utf8()
     except Exception:
         pass
-    console = Console(highlight=False, legacy_windows=False)
-    # Чистый экран под каждый экшен: прошлые выводы не висят хвостом.
-    # clear_screen идёт через WinAPI cls (ANSI-clear молча глотается рядом консолей).
     try:
         from .menu import clear_screen
 
         clear_screen()
     except Exception:
         pass
-    return console, Panel, Align, MENU_WIDTH, THEME
+    # Чистый экран под каждый экшен: прошлые выводы не висят хвостом.
+    # clear_screen идёт через WinAPI cls (ANSI-clear молча глотается рядом консолей).
+    return MENU_WIDTH, THEME
 
 
 def show_status() -> None:
-    console, Panel, Align, WIDTH, THEME = _rich()
-    from .logo import MARK_OK, MARK_ERR, safe_mark
+    _rich()
+    from .i18n import t
+    from .logo import MARK_ERR, MARK_OK, safe_mark
     from .config import load_config
 
     ok_m, err_m = safe_mark(MARK_OK), safe_mark(MARK_ERR)
@@ -42,21 +39,25 @@ def show_status() -> None:
     from aipc import __version__
 
     lines = [
-        f"Режим: {cfg.get('mode')}",
-        f"Конфиг: {config_dir() / 'config.yaml'}",
-        f"Версия tools: {__version__}",
+        f"{t('act.status.mode')}{cfg.get('mode')}",
+        f"{t('act.status.config')}{config_dir() / 'config.yaml'}",
+        f"{t('act.status.version')}{__version__}",
     ]
     # Проверки без падений
     checks = []
-    for mod, name in [("mss", "скриншоты"), ("pyautogui", "мышь/клава"), ("mcp", "MCP-сервер"), ("rich", "меню")]:
+    for mod, key in [("mss", "st.shot"), ("pyautogui", "st.mouse"),
+                     ("mcp", "st.mcp"), ("rich", "st.menu")]:
+        name = t(key)
         try:
             __import__(mod)
             checks.append(f"{ok_m} {name}")
         except ImportError:
             checks.append(f"{err_m} {name} (pip install {mod})")
-    body = "\n".join(lines + ["", *checks])
-    console.print(Align.center(Panel(body, title=" Статус ", width=WIDTH, border_style=THEME["border"])))
-    input("\nEnter чтобы вернуться... ")
+    # имена проверок локализуем отдельно, модули — нет
+    from .menu import show_card, pause
+
+    show_card(t("act.status.title"), "\n".join(lines + ["", *checks]))
+    pause()
 
 
 def _core_command() -> tuple[list, str | None]:
@@ -119,32 +120,40 @@ def _proc_alive(pid: int) -> bool:
 
 
 def start_core() -> None:
-    console, Panel, Align, WIDTH, THEME = _rich()
+    _rich()
+    from .i18n import t
+    from .policy import load_mode
+
     ensure_default_config()
     pid_file = config_dir() / "aipc.pid"
     try:
-        console.print(Align.center(Panel("Проверяю Core как IDE (handshake)...",
-                                         title=" Запустить ", width=WIDTH, border_style=THEME["border"])))
+        from .menu import show_card, pause
+
+        show_card(t("act.start.title"), t("act.start.checking"))
         hs = handshake_core()
         if not hs.get("ok"):
-            console.print(Align.center(Panel(f"Core не отвечает: {hs.get('error')}\nСмотри Doctor.",
-                                             title=" Ошибка ", width=WIDTH, border_style="red")))
-            input("\nEnter чтобы вернуться... ")
+            show_card(t("act.error"),
+                      t("act.start.noanswer").format(err=hs.get("error")),
+                      kind="err")
+            pause()
             return
         proc = _launch_core()
         pid_file.write_text(str(proc.pid), encoding="utf-8")
         alive = _wait_alive(proc.pid, 3.0)
         if alive:
-            console.print(Align.center(Panel(
-                f"AiPC-Core запущен и отвечает.\nPID {proc.pid} | tools: {hs.get('tools')} | режим ask",
-                title=" Запустить ", width=WIDTH, border_style="green")))
+            show_card(t("act.start.title"),
+                      t("act.start.up").format(pid=proc.pid, n=hs.get("tools"),
+                                              mode=load_mode()),
+                      kind="ok")
         else:
-            console.print(Align.center(Panel(
-                f"Процесс {proc.pid} запустился, но не отвечает.\nСмотри Логи и Doctor.",
-                title=" Внимание ", width=WIDTH, border_style="yellow")))
+            show_card(t("act.warn"),
+                      t("act.start.silent").format(pid=proc.pid),
+                      kind="warn")
     except Exception as e:
-        console.print(Align.center(Panel(f"Не запустился: {e}", title=" Ошибка ", width=WIDTH, border_style="red")))
-    input("\nEnter чтобы вернуться... ")
+        from .menu import show_card, pause
+
+        show_card(t("act.error"), t("act.start.fail").format(err=e), kind="err")
+    pause()
 
 
 def _wait_alive(pid: int, timeout: float) -> bool:
@@ -163,82 +172,99 @@ def _wait_alive(pid: int, timeout: float) -> bool:
 
 
 def stop_core() -> None:
-    console, Panel, Align, WIDTH, THEME = _rich()
+    _rich()
+    from .i18n import t
     from .maintenance import kill_core
+    from .menu import pause, show_card
 
     res = kill_core()
     if res.get("ok"):
-        console.print(Align.center(Panel(res.get("note", "Остановлен."), title=" Стоп ", width=WIDTH, border_style="green")))
+        show_card(t("act.stop.title"), res.get("note", t("act.stop.done")),
+                  kind="ok")
     else:
-        console.print(Align.center(Panel(f"Ошибка: {res.get('error')}", title=" Ошибка ", width=WIDTH, border_style="red")))
-    input("\nEnter чтобы вернуться... ")
+        show_card(t("act.error"), res.get("error", ""), kind="err")
+    pause()
 
 
 def show_doctor() -> None:
-    console, Panel, Align, WIDTH, THEME = _rich()
-    from rich.table import Table
-    from .logo import MARK_OK, MARK_ERR, safe_mark
+    _rich()
+    from .i18n import t
+    from .logo import MARK_ERR, MARK_OK, safe_mark
     from .maintenance import doctor
+    from .menu import pause, show_card
 
-    console.print(Align.center(Panel("Собираю диагностику...", title=" Doctor ", width=WIDTH,
-                                     border_style=THEME["border"])))
+    show_card(t("act.doctor.title"), t("act.doctor.busy"))
     try:
         results = doctor()
     except Exception as e:
         import traceback
 
-        console.print(Align.center(Panel(f"Doctor упал: {e}\n{traceback.format_exc()[-800:]}",
-                                         title=" Ошибка ", width=WIDTH, border_style="red")))
-        input("\nEnter чтобы вернуться... ")
+        show_card(t("act.error"),
+                  t("act.doctor.crashed").format(
+                      err=e, trace=traceback.format_exc()[-800:]),
+                  kind="err")
+        pause()
         return
     ok_m, err_m = safe_mark(MARK_OK), safe_mark(MARK_ERR)
-    table = Table(show_header=False, box=None, padding=(0, 1), expand=True)
-    table.add_column("check")
-    table.add_column("res")
+    lines = []
     all_ok = True
     for name, ok, note in results:
         all_ok = all_ok and ok
         mark = ok_m if ok else err_m
-        style = THEME["ok"] if ok else THEME["err"]
-        table.add_row(name, f"[{style}]{mark} {note}[/{style}]")
-    title = " Doctor: ВСЕ ОК " if all_ok else " Doctor: есть замечания "
-    console.print(Align.center(Panel(table, title=title, width=WIDTH, border_style="green" if all_ok else "yellow")))
-    input("\nEnter чтобы вернуться... ")
+        lines.append(f"{mark} {name}: {note}")
+    title = t("act.doctor.ok") if all_ok else t("act.doctor.issues")
+    show_card(title.strip(), "\n".join(lines),
+              kind="ok" if all_ok else "warn")
+    pause()
 
 
 def show_update_check() -> bool:
     """Проверить релиз на GitHub. Если есть новее — спросить и обновить. True = обновление запущено."""
     from .maintenance import check_update, self_update
     from .menu import MenuItem, run_menu
+    from .i18n import t
+    from .menu import pause, show_card
 
-    console, Panel, Align, WIDTH, THEME = _rich()
-    console.print(Align.center(Panel("Проверяю GitHub...", title=" Обновления ", width=WIDTH, border_style=THEME["border"])))
+    _rich()
+    show_card(t("act.update.title"), t("act.update.checking"))
     info = check_update()
     if not info.get("ok"):
-        console.print(Align.center(Panel(f"Не проверить: {info.get('error')}\nПроверь интернет и попробуй позже.", title=" Обновления ", width=WIDTH, border_style="red")))
-        input("\nEnter чтобы вернуться... ")
+        show_card(t("act.update.title"),
+                  t("act.update.fail").format(err=info.get("error")),
+                  kind="err")
+        pause()
         return False
     if not info.get("update"):
-        console.print(Align.center(Panel(f"У тебя свежее: {info.get('current')}", title=" Обновления ", width=WIDTH, border_style="green")))
-        input("\nEnter чтобы вернуться... ")
+        show_card(t("act.update.title"),
+                  t("act.update.fresh").format(ver=info.get("current")),
+                  kind="ok")
+        pause()
         return False
     notes = info.get("notes", "")
-    body = f"Текущая: {info.get('current')}\nНовая: {info.get('latest')}\n\n{notes[:800]}"
-    console.print(Align.center(Panel(body, title=" Найдено обновление ", width=WIDTH, border_style="yellow")))
-    choice = run_menu("Обновить сейчас?", [MenuItem("Да, скачать и обновить", "yes"), MenuItem("Нет, позже", "no")])
+    body = f"{t('act.update.found')}: {info.get('current')} -> {info.get('latest')}\n\n{notes[:800]}"
+    show_card(t("act.update.title"), body, kind="warn")
+    choice = run_menu(t("update.ask"), [MenuItem(t("update.yes"), "yes"), MenuItem(t("update.no"), "no")])
     if choice == "quit" or choice == 1:
         return False
     code = self_update()
     if code == 0:
-        console.print(Align.center(Panel("Обновление запущено, это окно можно закрыть.", width=WIDTH, border_style="green")))
-        input("\nEnter чтобы выйти... ")
+        show_card(t("act.update.title"), t("act.update.started"), kind="ok")
+        try:
+            from .i18n import t as _t
+
+            input(_t("act.update.exit"))
+        except (EOFError, KeyboardInterrupt):
+            pass
         return True
-    input("\nEnter чтобы вернуться... ")
+    pause()
     return False
 
 
 def show_logs() -> None:
-    console, Panel, Align, WIDTH, THEME = _rich()
+    _rich()
+    from .i18n import t
+    from .menu import pause, show_card
+
     p = config_dir() / "audit.log"
     text = ""
     try:
@@ -250,10 +276,10 @@ def show_logs() -> None:
                 f.seek(max(0, size - 65536))
                 tail = f.read().decode("utf-8", errors="replace")
             lines = tail.splitlines()[-20:]
-            text = "\n".join(lines) or "(пусто)"
+            text = "\n".join(lines) or t("act.logs.empty")
         else:
-            text = "(лог пока пуст)"
+            text = t("act.logs.nofile")
     except Exception as e:
-        text = f"Ошибка чтения: {e}"
-    console.print(Align.center(Panel(text, title=" Логи (последние 20) ", width=WIDTH, border_style=THEME["border"])))
-    input("\nEnter чтобы вернуться... ")
+        text = t("act.logs.err").format(err=e)
+    show_card(t("act.logs.title"), text)
+    pause()
