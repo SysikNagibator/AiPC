@@ -118,7 +118,7 @@ def add_to_system_path(path: str) -> tuple[bool, str]:
 def install_self_to_program_files() -> tuple[bool, str]:
     """Копирует exe в Program Files под каноническим именем + шим aipc.bat. Требует админа."""
     if os.name != "nt":
-        return False, "Program Files — только Windows (на macOS/Linux: pip install aipc-sysik)"
+        return False, "Program Files — только Windows (на macOS/Linux: pip install git+https://github.com/SysikNagibator/AiPC.git)"
     dst = Path(install_dir())
     try:
         dst.mkdir(parents=True, exist_ok=True)
@@ -660,7 +660,7 @@ def uninstall_self(only: list[str] | None = None) -> list[tuple[str, bool, str]]
 def privileged_self_install() -> int:
     """Шаг с правами админа: копия в Program Files + PATH. Вызывается как `aipc --self-install`."""
     if os.name != "nt":
-        print("Эта установка — только Windows. На macOS/Linux: pip install aipc-sysik")
+        print("Эта установка — только Windows. На macOS/Linux: pip install git+https://github.com/SysikNagibator/AiPC.git")
         return 1
     print("=== AiPC: установка (админ) ===")
     ok1, msg1 = install_self_to_program_files()

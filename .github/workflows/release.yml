@@ -81,4 +81,4 @@ jobs:
 
             ### Установка
             **Windows:** скачай `AiPC_Win_1.1.exe`, запусти, в меню выбери «Настроить» — MCP пропишется в IDE сам.
-            **macOS / Linux:** скачай бинарь под свою ОС, сделай `chmod +x` и запусти в терминале; MCP для IDE ставится через `pip install aipc-sysik`.
+            **macOS / Linux:** скачай бинарь под свою ОС, сделай `chmod +x` и запусти в терминале; MCP для IDE ставится через `pip install git+https://github.com/SysikNagibator/AiPC.git`.
