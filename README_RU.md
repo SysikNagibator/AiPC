@@ -21,10 +21,10 @@
   <b>EN README: <a href="README.md">English version</a></b> · Скиллы: <a href="SKILL_RU.md">SKILL.md</a> · IDE матриции: <a href="docs/IDES_RU.md">docs/IDES.md</a>
 </p>
 
-<p align="center">
-  <video src="https://github.com/user-attachments/assets/216933a9-e7f0-4126-8e8a-35b2f66343eb" controls width="640"></video><br>
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/216933a9-e7f0-4126-8e8a-35b2f66343eb" data-canonical-src="https://github.com/user-attachments/assets/216933a9-e7f0-4126-8e8a-35b2f66343eb" controls="controls" width="640"></video><br>
   <b>Видеообзор</b> · <a href="https://github.com/user-attachments/assets/216933a9-e7f0-4126-8e8a-35b2f66343eb">прямая ссылка</a>
-</p>
+</div>
 
 ---
 

@@ -23,10 +23,10 @@
   <b>RU README: <a href="README_RU.md">Russian version</a></b> · Skills: <a href="SKILL.md">SKILL.md</a> · IDE matrix: <a href="docs/IDES.md">docs/IDES.md</a>
 </p>
 
-<p align="center">
-  <video src="https://github.com/user-attachments/assets/7cd96d2e-84bc-418c-90c8-cc13f923b69f" controls width="640"></video><br>
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/7cd96d2e-84bc-418c-90c8-cc13f923b69f" data-canonical-src="https://github.com/user-attachments/assets/7cd96d2e-84bc-418c-90c8-cc13f923b69f" controls="controls" width="640"></video><br>
   <b>Video overview</b> · <a href="https://github.com/user-attachments/assets/7cd96d2e-84bc-418c-90c8-cc13f923b69f">direct link</a>
-</p>
+</div>
 
 ---
 
