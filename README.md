@@ -69,6 +69,10 @@ forbids that answer and requires acting through AiPC tools.
 
 ## Why AiPC
 
+<p align="center">
+  <img src="https://files.catbox.moe/e9o2sz.png" alt="AiPC by SYSIK">
+</p>
+
 | Usual agent limits | With AiPC |
 |--------------------|-----------|
 | Blind: no screen | `screen_see` — screenshot as a native image block, cursor marked |
