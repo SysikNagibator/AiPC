@@ -62,6 +62,7 @@ def build() -> Path:
 
 
 def sums(paths: list) -> Path:
+    DIST.mkdir(parents=True, exist_ok=True)
     sums_file = DIST / "SHA256SUMS.txt"
     with sums_file.open("w", encoding="utf-8") as f:
         for p in paths:

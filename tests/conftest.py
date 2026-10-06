@@ -20,4 +20,9 @@ def isolated_home(tmp_path, monkeypatch):
     monkeypatch.setenv("AIPC_HOME", str(tmp_path / ".aipc"))
     monkeypatch.setenv("TEMP", str(tmp_path))
     monkeypatch.setenv("TMP", str(tmp_path))
+    # Пути IDE на Linux строятся от XDG_CONFIG_HOME (installer._base_dirs):
+    # без изоляции тесты утекают в реальный ~/.config пользователя.
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(home / ".local" / "share"))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / ".cache"))
     return home
