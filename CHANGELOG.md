@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Добавлено (фото и кроссплатформа)
+- Новый логотип приложения (зелёный неон): `assets/AiPC_Logo.svg` (векторный исходник) + `assets/AiPC_Logo.png` (рендер 1024); иконки пересобраны из него — `assets/AiPC.ico` (Windows exe/setup) и `assets/AiPC.icns` (macOS); `tools/build_icon.py` теперь только проверяет ico и собирает icns/превью, `tools/build_all.py` передаёт иконку и на macOS.
 - README/RU: новые баннеры и постеры из `AiPC_Photos` (старые картинки удалены, `AiPC_Logo.png` оставлен как исходник иконки); бейдж платформ Windows|macOS|Linux; установка для macOS/Linux.
 - macOS/Linux: POSIX-буфер обмена (`pbcopy/pbpaste`, `xclip`/`xsel`), пути IDE под XDG/Library, ассеты обновлений под ОС (SHA256), консольные подтверждения вместо GUI, широкие `except` вокруг GUI-импортов.
 - Зависимости с маркерами ОС (`pyproject.toml`, `requirements.txt`): win-only пакеты ставятся только на Windows.

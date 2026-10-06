@@ -44,6 +44,12 @@ def build() -> Path:
         ico = ROOT / "assets" / "AiPC.ico"
         if ico.exists():
             cmd += ["--icon", str(ico)]
+    elif sys.platform == "darwin":
+        icns = ROOT / "assets" / "AiPC.icns"
+        if icns.exists():
+            cmd += ["--icon", str(icns)]
+        # Linux: у PyInstaller нет встраиваемых иконок для ELF —
+        # иконка ставится через .desktop/hicolor при установке пакета.
     cmd.append(str(ROOT / "tools" / "exe_entry.py"))
     print("+", " ".join(cmd))
     subprocess.run(cmd, cwd=ROOT, check=True)

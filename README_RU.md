@@ -329,7 +329,8 @@ AiPC/
                    # notify · installer (self-install + 19 IDE configs)
                    # maintenance (update/doctor/kill) · menu · policy/audit
   mcp_presets/     # готовые MCP-конфиги (16 файлов)
-  assets/          # логотип + иконка exe (видна на светлой и тёмной темах)
+  assets/          # логотип (AiPC_Logo.svg/png) + иконки приложения: AiPC.ico (Windows),
+                   # AiPC.icns (macOS) — видны на светлой и тёмной темах
   tools/           # build_exe.bat · build_icon.py · sign.bat · version_info.txt
   tests/           # pytest: policy, installer merge, server (19 тестов)
   docs/            # IDES.md (40 IDE) · SIGNING.md (SmartScreen)

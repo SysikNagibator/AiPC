@@ -8,3 +8,4 @@ build/
 *.egg-info/
 ~/.aipc/
 aipc.log
+assets/icon_preview_*.png
