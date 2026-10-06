@@ -129,8 +129,8 @@ def check_update(repo: str = UPDATE_REPO) -> dict:
         want = _wanted_asset([a["name"] for a in assets])
         exe = next((a for a in assets if a["name"] == want), None)
         sums = next((a for a in assets
-                     if a["name"] and a["name"].lower() in ("sha256sums.txt", "sha256sum.txt",
-                                                            "checksums.txt")), None)
+                     if a["name"] and a["name"].lower().startswith(
+                         ("sha256sums", "sha256sum", "checksums"))), None)
         if parse_version(tag) > parse_version(cur):
             return {"ok": True, "update": True, "current": cur, "latest": tag,
                     "url": data.get("html_url"), "exe_url": exe["url"] if exe else None,

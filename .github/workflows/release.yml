@@ -33,16 +33,33 @@ jobs:
       - run: python tools/gen_tools_table.py --check
       - name: Build binary
         run: python tools/build_all.py
+      - name: Rename sums per OS
+        shell: bash
+        run: mv dist/SHA256SUMS.txt "dist/SHA256SUMS-${{ matrix.os }}.txt"
       - name: SLSA provenance (binary + sums)
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
             dist/${{ matrix.pattern }}
-            dist/SHA256SUMS.txt
+            dist/SHA256SUMS-${{ matrix.os }}.txt
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: aipc-${{ matrix.os }}
           path: |
             dist/${{ matrix.pattern }}
-            dist/SHA256SUMS.txt
+            dist/SHA256SUMS-${{ matrix.os }}.txt
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist-all
+          merge-multiple: true
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist-all/*
+          generate_release_notes: true

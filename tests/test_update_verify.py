@@ -80,6 +80,40 @@ def test_no_sums_aborts(monkeypatch, capsys):
     assert "SHA256SUMS" in capsys.readouterr().out
 
 
+def test_per_os_sums_name(monkeypatch):
+    import json
+
+    rel = {"tag_name": "v9.9.9", "html_url": "https://x/y", "body": "",
+           "assets": [
+               {"name": "AiPC_Win_9.9.9.exe",
+                "browser_download_url": "https://x/e.exe", "size": 1},
+               {"name": "SHA256SUMS-windows-latest.txt",
+                "browser_download_url": "https://x/s.txt", "size": 1},
+           ]}
+
+    class _R:
+        def __init__(self, d):
+            self._d = d
+
+        def read(self, n=-1):
+            out, self._d = (self._d, b"") if n is None or n < 0 else \
+                (self._d[:n], self._d[n:])
+            return out
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def _fake_urlopen(req, timeout=None):
+        return _R(json.dumps(rel).encode())
+
+    monkeypatch.setattr(M, "urlopen", _fake_urlopen)
+    info = M.check_update()
+    assert info["sums_url"] == "https://x/s.txt"
+
+
 def test_hash_mismatch_aborts(monkeypatch, capsys):
     sums = "00" * 32 + "  AiPC_Win_9.9.9.exe\n"
     _fake_release(monkeypatch, b"MZ" + b"\x11" * 200, sums)
