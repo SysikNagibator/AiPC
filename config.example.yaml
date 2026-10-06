@@ -1,4 +1,11 @@
 mode: ask
+language: en
+ui:
+  theme: green
+  animations: false
+  center: false
+update:
+  auto_check: true
 server:
   host: 127.0.0.1
   port: 18789
@@ -9,23 +16,64 @@ browser:
 ssh_hosts: {}
 web_search:
   provider: duckduckgo
+installer:
+  auto_register: false
 safety:
+  version: 3
+  confirm_timeout: 120
+  allow_minutes: 10
+  allow_presets: [10, 60]
+  run_cmd_policy: deny
+  cmd_allowlist: []
+  sensitive_windows_extra: []
+  taint_guard: true
+  taint_window: 10
+  max_calls_per_min: 120
+  loop_repeat: 10
+  max_download_mb: 200
   deny_cmd:
     - "format "
     - "rm -rf /"
+    - ":(){:|:&};:"
     - "mimikatz"
     - "sekurlsa"
     - "ntdsutil"
     - "vssadmin delete"
+    - "vssadmin resize"
     - "bcdedit"
     - "cipher /w"
+    - "wevtutil cl "
+    - "wevtutil clear-log"
     - "certutil -decode"
+    - "certutil -urlcache"
     - "bitsadmin /transfer"
+    - "powershell -e "
     - "powershell -enc "
+    - "powershell --encode"
+    - "powershell /e"
+    - "pwsh -e"
+    - "pwsh -enc"
     - " -encodedcommand "
+    - "frombase64string"
+    - "invoke-expression"
+    - "iex "
+    - "iex("
+    - "get-childitem env:"
+    - "gci env:"
+    - "dir env:"
+    - "[environment]::getenvironmentvariables"
     - "reg delete hklm"
+    - "reg add hklm"
+    - "rd /s /q c:\\windows"
+    - "rd /s /q c:/windows"
+    - "del /f /s /q c:\\windows"
+    - "takeown /f c:\\windows"
+    - "icacls c:\\windows"
+    - "net user "
     - "net localgroup administrators"
     - "schtasks /create"
+    - "sc create"
+    - "wmic shadowcopy delete"
   deny_paths:
     - "**/Cookies/**"
     - "**/Login Data**"
@@ -33,5 +81,33 @@ safety:
     - "**/id_ed25519"
     - "**/*.pem"
     - "**/*.pfx"
+    - "**/*.p12"
     - "**/*.kdbx"
+    - "**/NTUSER.DAT*"
+    - "**/SAM*"
+    - "**/SECURITY*"
+    - "id_rsa"
+    - "id_ed25519"
+    - "*.pem"
+    - "*.pfx"
+    - "*.p12"
+    - "*.kdbx"
     - "C:\\Windows\\System32\\*"
+    - "**/.ssh/**"
+    - "**/.aws/**"
+    - "**/.kube/**"
+    - "**/.gnupg/**"
+    - "**/.password-store/**"
+    - "**/.env"
+    - "**/.env.*"
+    - "**/wallet.dat"
+    - "**/*.wallet"
+    - "**/Local State*"
+    - "**/Web Data*"
+    - "**/leveldb/**"
+    - "**/Local Storage/**"
+    - "**/Session Storage/**"
+    - "**/tdata/**"
+    - ".env"
+    - ".env.*"
+  allow_ssh_keys: false

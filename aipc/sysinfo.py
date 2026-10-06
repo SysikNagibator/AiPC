@@ -1,5 +1,6 @@
 """Системная информация, сеть, окружение. Только чтение."""
 from __future__ import annotations
+from .errors import denied
 
 import os
 import socket
@@ -67,17 +68,17 @@ def net_check(host: str, timeout: float = 5.0) -> dict:
     return {"ok": True, "reachable": False, "host": name, "error": "; ".join(errors)[:300]}
 
 
-_SECRET_HINTS = ("key", "token", "secret", "password", "passwd", "pwd", "auth", "credential")
-
-
 def env_get(name: str) -> dict:
     """Одна переменная окружения. Секреты (*KEY/*TOKEN/*SECRET...) не отдаю."""
+    from .policy import is_secret_name
+
     if not name or not name.strip():
         return {"ok": False, "reason": "bad_arg", "error": "пустое имя"}
-    low = name.strip().lower()
-    if any(h in low for h in _SECRET_HINTS):
-        return {"ok": False, "reason": "denied", "error": "имена с секретами не читаю"}
+    if is_secret_name(name):
+        return denied("имена с секретами не читаю", "читай только не-секретные имена или попроси человека")
     val = os.environ.get(name.strip())
     if val is None:
         return {"ok": False, "reason": "not_found", "error": f"нет переменной: {name}"}
-    return {"ok": True, "name": name.strip(), "value": val}
+    from .audit import mask_secrets
+
+    return {"ok": True, "name": name.strip(), "value": mask_secrets(val)}

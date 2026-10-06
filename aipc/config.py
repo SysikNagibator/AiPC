@@ -13,11 +13,16 @@ SAFETY_VERSION = 3
 
 DEFAULTS = {
     "mode": "ask",  # ask | auto | read-only
+    "lang": "en",  # en | ru — язык меню (EN база). Устарело: см. language.
+    "language": "en",  # en | ru — канонический ключ языка меню
+    "ui": {"theme": "green", "animations": False, "center": False},
+    "update": {"auto_check": True},  # фоновая проверка релизов на новом гите
     "server": {"host": "127.0.0.1", "port": 18789},
     "screen": {"max_width": 1280},
     "browser": {"cdp_port": 9222},
     "ssh_hosts": {},
     "web_search": {"provider": "duckduckgo"},
+    "installer": {"auto_register": False},  # не трогать IDE-конфиги при каждом запуске меню
     "safety": {
         "deny_cmd": [
             "format ",
@@ -38,7 +43,18 @@ DEFAULTS = {
             "powershell -e ",
             "powershell -enc ",
             "powershell --encode",
+            "powershell /e",
+            "pwsh -e",
+            "pwsh -enc",
             " -encodedcommand ",
+            "frombase64string",
+            "invoke-expression",
+            "iex ",
+            "iex(",
+            "get-childitem env:",
+            "gci env:",
+            "dir env:",
+            "[environment]::getenvironmentvariables",
             "reg delete hklm",
             "reg add hklm",
             "rd /s /q c:\\windows",
@@ -72,7 +88,39 @@ DEFAULTS = {
             "*.p12",
             "*.kdbx",
             "C:\\Windows\\System32\\*",
+            # Хранилища секретов, облачные ключи, окружения, кошельки,
+            # профили браузеров (токены сессий), мессенджеры.
+            "**/.ssh/**",
+            "**/.aws/**",
+            "**/.kube/**",
+            "**/.gnupg/**",
+            "**/.password-store/**",
+            "**/.env",
+            "**/.env.*",
+            "**/wallet.dat",
+            "**/*.wallet",
+            "**/Local State*",
+            "**/Web Data*",
+            "**/leveldb/**",
+            "**/Local Storage/**",
+            "**/Session Storage/**",
+            "**/tdata/**",
+            ".env",
+            ".env.*",
         ],
+        "allow_ssh_keys": False,  # true = разрешить чтение id_rsa/*.pem/*.pfx (opt-in)
+        # Этап 1.1-1.2: подтверждения и allowlist (только additive-ключи).
+        "confirm_timeout": 120,  # секунд ждать человека, потом denied_timeout
+        "allow_minutes": 10,  # запасной срок «запомнить» (если пресетов нет)
+        "allow_presets": [10, 60],  # вариации времени в окне подтверждения
+        "run_cmd_policy": "deny",  # deny | allowlist (см. cmd_allowlist)
+        "cmd_allowlist": [],  # префиксы команд для allowlist-режима
+        "sensitive_windows_extra": [],  # свои подстроки чувствительных окон
+        "taint_guard": True,  # подтверждать опасное после недоверенного ввода даже в auto
+        "taint_window": 10,  # ...если untrusted был в последних N вызовах
+        "max_calls_per_min": 120,  # лимит скорости вызовов tools
+        "loop_repeat": 10,  # один и тот же вызов N раз подряд = loop_guard
+        "max_download_mb": 200,  # потолок скачивания (download_file, sftp)
     },
 }
 

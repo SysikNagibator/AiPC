@@ -5,7 +5,8 @@
     {
       "name": "ask_user",
       "args": [
-        "question"
+        "question",
+        "timeout"
       ]
     },
     {
@@ -38,6 +39,13 @@
       ]
     },
     {
+      "name": "browser_history_search",
+      "args": [
+        "query",
+        "limit"
+      ]
+    },
+    {
       "name": "browser_tabs",
       "args": []
     },
@@ -47,7 +55,9 @@
     },
     {
       "name": "clipboard_get_image",
-      "args": []
+      "args": [
+        "raw"
+      ]
     },
     {
       "name": "clipboard_set",
@@ -199,6 +209,10 @@
       ]
     },
     {
+      "name": "mouse_position",
+      "args": []
+    },
+    {
       "name": "mouse_right_click",
       "args": [
         "x",
@@ -221,6 +235,13 @@
       "name": "open_app",
       "args": [
         "name_or_path"
+      ]
+    },
+    {
+      "name": "pixel_color",
+      "args": [
+        "x",
+        "y"
       ]
     },
     {
@@ -249,6 +270,13 @@
       ]
     },
     {
+      "name": "screen_burst",
+      "args": [
+        "count",
+        "interval"
+      ]
+    },
+    {
       "name": "screen_info",
       "args": []
     },
@@ -259,14 +287,16 @@
         "y",
         "w",
         "h",
-        "monitor"
+        "monitor",
+        "raw"
       ]
     },
     {
       "name": "screen_see",
       "args": [
         "monitor",
-        "max_width"
+        "max_width",
+        "raw"
       ]
     },
     {
@@ -297,6 +327,24 @@
         "host",
         "username",
         "cmd"
+      ]
+    },
+    {
+      "name": "ssh_sftp_get",
+      "args": [
+        "host",
+        "username",
+        "remote",
+        "local"
+      ]
+    },
+    {
+      "name": "ssh_sftp_put",
+      "args": [
+        "host",
+        "username",
+        "local",
+        "remote"
       ]
     },
     {
@@ -386,6 +434,12 @@
       ]
     },
     {
+      "name": "window_shot",
+      "args": [
+        "title_substr"
+      ]
+    },
+    {
       "name": "windows_list",
       "args": [
         "limit"
@@ -394,7 +448,31 @@
     {
       "name": "aipc_status",
       "args": []
+    },
+    {
+      "name": "audio_listen",
+      "args": [
+        "source",
+        "seconds",
+        "rate",
+        "save_to"
+      ]
+    },
+    {
+      "name": "video_info",
+      "args": [
+        "path"
+      ]
+    },
+    {
+      "name": "video_frames",
+      "args": [
+        "path",
+        "times",
+        "count",
+        "max_width"
+      ]
     }
   ],
-  "version": "1.0.7"
+  "version": "1.1"
 }

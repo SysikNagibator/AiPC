@@ -1,5 +1,6 @@
 """OS: файлы, терминал, процессы. С джейлом через policy."""
 from __future__ import annotations
+from .errors import denied
 
 import subprocess
 from pathlib import Path
@@ -29,7 +30,7 @@ def check_free_space(path: str, need_bytes: int = 0, reserve_mb: int = 500) -> t
 def fs_list(path: str) -> dict:
     ok, err = check_path_allowed(path)
     if not ok:
-        return {"ok": False, "reason": "denied", "error": err}
+        return denied(err, "выбери путь вне запретных (safety.deny_paths в ~/.aipc/config.yaml)")
     try:
         p = Path(path).expanduser()
         if not p.exists():
@@ -43,7 +44,7 @@ def fs_list(path: str) -> dict:
 def fs_read(path: str, limit: int = 20000, offset: int = 0) -> dict:
     ok, err = check_path_allowed(path)
     if not ok:
-        return {"ok": False, "reason": "denied", "error": err}
+        return denied(err, "выбери путь вне запретных (safety.deny_paths в ~/.aipc/config.yaml)")
     try:
         raw = Path(path).expanduser().read_bytes()
         if b"\x00" in raw[:8000]:
@@ -51,7 +52,10 @@ def fs_read(path: str, limit: int = 20000, offset: int = 0) -> dict:
                     "error": f"бинарный файл ({len(raw)} байт), текст не читаю"}
         data = raw.decode("utf-8", errors="replace")
         off = max(0, offset)
-        return {"ok": True, "text": data[off:off + max(100, limit)], "size": len(data), "offset": off}
+        from .audit import mask_secrets
+
+        chunk = mask_secrets(data[off:off + max(100, limit)])
+        return {"ok": True, "text": chunk, "size": len(data), "offset": off}
     except FileNotFoundError:
         return {"ok": False, "reason": "not_found", "error": f"нет файла: {path}"}
     except Exception as e:
@@ -61,9 +65,9 @@ def fs_read(path: str, limit: int = 20000, offset: int = 0) -> dict:
 def fs_write(path: str, text: str, backup: bool = False) -> dict:
     ok, err = check_path_allowed(path)
     if not ok:
-        return {"ok": False, "reason": "denied", "error": err}
+        return denied(err, "выбери путь вне запретных (safety.deny_paths в ~/.aipc/config.yaml)")
     if load_mode() == "read-only":
-        return {"ok": False, "reason": "denied", "error": "read-only режим: запись запрещена"}
+        return denied("read-only режим: запись запрещена", "переключи режим: меню → Настроить → Режим")
     try:
         import os as _os
         import tempfile as _tf
@@ -94,7 +98,7 @@ def fs_write(path: str, text: str, backup: bool = False) -> dict:
 def fs_stat(path: str) -> dict:
     ok, err = check_path_allowed(path)
     if not ok:
-        return {"ok": False, "reason": "denied", "error": err}
+        return denied(err, "выбери путь вне запретных (safety.deny_paths в ~/.aipc/config.yaml)")
     try:
         import datetime as _dt
 
@@ -111,9 +115,9 @@ def fs_stat(path: str) -> dict:
 def fs_mkdir(path: str) -> dict:
     ok, err = check_path_allowed(path)
     if not ok:
-        return {"ok": False, "reason": "denied", "error": err}
+        return denied(err, "выбери путь вне запретных (safety.deny_paths в ~/.aipc/config.yaml)")
     if load_mode() == "read-only":
-        return {"ok": False, "reason": "denied", "error": "read-only режим: создание запрещено"}
+        return denied("read-only режим: создание запрещено", "переключи режим: меню → Настроить → Режим")
     try:
         p = Path(path).expanduser()
         p.mkdir(parents=True, exist_ok=True)
@@ -126,17 +130,24 @@ def fs_delete(path: str, recursive: bool = False) -> dict:
     """Удалить файл/пустую папку. Непустую папку — только recursive=true."""
     ok, err = check_path_allowed(path)
     if not ok:
-        return {"ok": False, "reason": "denied", "error": err}
+        return denied(err, "выбери путь вне запретных (safety.deny_paths в ~/.aipc/config.yaml)")
     if load_mode() == "read-only":
-        return {"ok": False, "reason": "denied", "error": "read-only режим: удаление запрещено"}
+        return denied("read-only режим: удаление запрещено", "переключи режим: меню → Настроить → Режим")
     try:
         import shutil as _sh
 
         p = Path(path).expanduser()
         if not p.exists():
             return {"ok": False, "reason": "not_found", "error": f"нет пути: {path}"}
-        if len(p.parts) <= 2:
-            return {"ok": False, "reason": "denied", "error": "корень диска не удаляю"}
+        try:
+            rp = p.resolve()
+            import os as _os2
+
+            protected = {Path(rp.anchor), Path.home().resolve(), Path(_os2.environ.get("SystemRoot", r"C:\Windows")).resolve()}
+            if rp in protected:
+                return denied("корень диска / дом / Windows не удаляю", "укажи конкретный файл или папку, а не корень")
+        except Exception:
+            pass
         if p.is_dir():
             items = list(p.iterdir())
             if items and not recursive:
@@ -155,9 +166,9 @@ def fs_move(src: str, dst: str) -> dict:
     for path in (src, dst):
         ok, err = check_path_allowed(path)
         if not ok:
-            return {"ok": False, "reason": "denied", "error": err}
+            return denied(err, "выбери путь вне запретных (safety.deny_paths в ~/.aipc/config.yaml)")
     if load_mode() == "read-only":
-        return {"ok": False, "reason": "denied", "error": "read-only режим: перемещение запрещено"}
+        return denied("read-only режим: перемещение запрещено", "переключи режим: меню → Настроить → Режим")
     try:
         s, d = Path(src).expanduser(), Path(dst).expanduser()
         if not s.exists():
@@ -173,7 +184,7 @@ def fs_find(pattern: str, path: str = ".", max_results: int = 50, max_seconds: i
     """Рекурсивный поиск файлов по glob-паттерну. max_results/max_seconds — пагинация, не запрет."""
     ok, err = check_path_allowed(path)
     if not ok:
-        return {"ok": False, "reason": "denied", "error": err}
+        return denied(err, "выбери путь вне запретных (safety.deny_paths в ~/.aipc/config.yaml)")
     try:
         import fnmatch as _fn
         import os as _os
@@ -232,7 +243,7 @@ def _decode_output(data: bytes) -> str:
 def run_cmd(cmd: str, cwd: str | None = None, timeout: int = 60) -> dict:
     ok, err = check_cmd_allowed(cmd)
     if not ok:
-        return {"ok": False, "error": err}
+        return denied(err, "убери запрещённый фрагмент или переформулируй команду")
     try:
         r = subprocess.run(cmd, shell=True, cwd=cwd or None, capture_output=True, text=False, timeout=timeout)
         stdout = _decode_output(r.stdout or b"")
