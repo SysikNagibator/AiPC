@@ -1,0 +1,8 @@
+# Keep line endings stable across OSes (golden test files compare bytes).
+* text=auto eol=lf
+*.bat text eol=crlf
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.exe binary

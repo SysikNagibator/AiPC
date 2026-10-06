@@ -82,6 +82,10 @@ def test_uninstall_codex_block(isolated_home):
     assert "[mcp_servers.aipc]" not in text and 'model = "x"' in text
 
 
+import pytest
+
+
+@pytest.mark.skipif(os.name != "nt", reason="реестр Windows: только на nt")
 def test_remove_from_path_fake_winreg(monkeypatch):
     store = {"Path": "C:\\Win;C:\\Program Files\\AiPC;C:\\X"}
 

@@ -145,11 +145,12 @@ def check_cmd_allowed(cmd: str) -> tuple[bool, str]:
         # ищем буквальным ядром — ловит пути с пробелами, которые рвут токены.
         # Однословные без пути (`id_rsa`, `*.pem`, `cookies`) пропускаем: их ловят
         # токены через basename, а подстрока дала бы ложные срабатывания.
+        # Нормализация ОС-независимая (иначе на Linux не ловит Windows-пути).
         for pat in deny_paths:
             try:
-                pnorm = os.path.normcase(str(pat)).replace("/", "\\")
-                core = pnorm.replace("*", "").strip("\\")
-                if len(core) >= 6 and ("\\" in core or " " in core) and core in seg:
+                pnorm = str(pat).replace("\\", "/").lower()
+                core = pnorm.replace("*", "").strip("/")
+                if len(core) >= 6 and ("/" in core or " " in core) and core in seg:
                     return False, f"запрещенный путь в команде: {pat}"
             except Exception:
                 continue
@@ -161,21 +162,23 @@ def check_path_allowed(path: str) -> tuple[bool, str]:
     deny = cfg.get("safety", {}).get("deny_paths", [])
     keys_ok = ssh_keys_allowed()
     expanded = os.path.expanduser(path)
-    norm = os.path.normcase(expanded).replace("/", "\\")
-    base = os.path.normcase(os.path.basename(expanded))
+    # Нормализация ОС-независимая: те же правила на Windows/Linux/macOS,
+    # иначе тесты и защита расходятся между платформами.
+    norm = str(expanded).replace("\\", "/").lower()
+    base = norm.rsplit("/", 1)[-1]
     for pat in deny:
         try:
-            pnorm = os.path.normcase(str(pat)).replace("/", "\\")
+            pnorm = str(pat).replace("\\", "/").lower()
             # Opt-in: чтения приватных ключей/сертификатов разрешены только при
             # safety.allow_ssh_keys=true. Остальные секреты запрещены всегда.
-            if keys_ok and pnorm.replace("\\", "/") in SSH_KEY_PATTERNS:
+            if keys_ok and pnorm in SSH_KEY_PATTERNS:
                 continue
             if fnmatch(norm, pnorm):
                 return False, f"запрещенный путь: {pat}"
             # Паттерны-имени (без сепаратора: *.pfx, id_rsa) сверяем с basename,
             # чтобы ловить и относительные пути. Паттерны-пути — только целиком:
-            # иначе basename '*' из '...\*' заблокировал бы вообще всё.
-            if "\\" not in pnorm and fnmatch(base, pnorm):
+            # иначе basename '*' из '.../*' заблокировал бы вообще всё.
+            if "/" not in pnorm and fnmatch(base, pnorm):
                 return False, f"запрещенный путь: {pat}"
         except Exception:
             continue
