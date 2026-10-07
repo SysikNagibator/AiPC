@@ -10,7 +10,7 @@
   },
   "homepage": "https://github.com/SysikNagibator/AiPC#readme",
   "bin": {
-    "aipc": "./bin/aipc.js"
+    "aipc": "bin/aipc.js"
   },
   "scripts": {
     "postinstall": "node install.js"
