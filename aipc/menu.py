@@ -212,6 +212,7 @@ THEMES = {
         "muted": "#96A09A", "dim": "#5B645F", "num": "#5B645F",
         "dot": "#3DDC84", "logo2": "#27A85D",
         "logo_c1": (0, 200, 100), "logo_c2": (120, 255, 165),
+        "shadow": "#2D322F",
     },
     "mono": {
         "border": "#6E6E6E", "accent": "#E8E8E8",
@@ -219,6 +220,7 @@ THEMES = {
         "muted": "#8A8A8A", "dim": "#5B5B5B", "num": "#5B5B5B",
         "dot": "#E8E8E8", "logo2": "#8A8A8A",
         "logo_c1": (200, 200, 200), "logo_c2": (255, 255, 255),
+        "shadow": "#2D2D2D",
     },
     "amber": {
         "border": "#7A5200", "accent": "#FFB000",
@@ -226,6 +228,7 @@ THEMES = {
         "muted": "#9A8A6A", "dim": "#5C5546", "num": "#5C5546",
         "dot": "#FFB000", "logo2": "#B07800",
         "logo_c1": (255, 176, 0), "logo_c2": (255, 220, 150),
+        "shadow": "#2E2A23",
     },
 }
 
@@ -465,7 +468,8 @@ def _header_card(state: MenuState, pal: dict, lang: str, inner: int):
             main2 = _cut(l2, inner, am)
             sh1 = _cut(" " + l1, inner, am)
             t2.append(_logo_row(main2, sh1, pal.get("logo_c1", (0, 200, 100)),
-                                pal.get("logo_c2", (120, 255, 165)), pal["dim"]))
+                                pal.get("logo_c2", (120, 255, 165)),
+                                pal.get("shadow") or pal["dim"]))
             t2.append("   ", style=None)
             t2.append(slogan, style=muted or None)
             tail = inner - _cells(t2.plain)
@@ -481,8 +485,9 @@ def _header_card(state: MenuState, pal: dict, lang: str, inner: int):
             sh2 = _cut(" " + l2, inner, am)
             t3 = Text(no_wrap=True)
             t3.overflow = "crop"
+            sh_style = pal.get("shadow") or pal["dim"]
             for ch in sh2:
-                t3.append(ch, style=pal["dim"] if ch != " " else None)
+                t3.append(ch, style=sh_style if ch != " " else None)
             tail3 = inner - _cells(t3.plain)
             if tail3 > 0:
                 t3.append(" " * tail3)
