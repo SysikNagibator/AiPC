@@ -1,0 +1,29 @@
+{
+  "name": "aipc-sysik",
+  "version": "1.1.0",
+  "description": "AiPC by SYSIK — full agent access to the PC (MCP + CLI). Installs the prebuilt binary for your OS.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SysikNagibator/AiPC.git",
+    "directory": "npm"
+  },
+  "homepage": "https://github.com/SysikNagibator/AiPC#readme",
+  "bin": {
+    "aipc": "./bin/aipc.js"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "files": [
+    "bin/aipc.js",
+    "platforms.js",
+    "install.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "os": ["win32", "darwin", "linux"],
+  "cpu": ["x64", "arm64"]
+}
