@@ -180,7 +180,7 @@ def _gradient(text: str, c1=(34, 197, 94), c2=(134, 239, 172)) -> "Text":
 
 
 def _logo_block(l1: str, l2: str, c1=(0, 200, 100), c2=(120, 255, 165),
-                shadow: str = "#2f3645") -> tuple["Text", "Text", "Text"]:
+                shadow: str = "#3a4254") -> tuple["Text", "Text", "Text"]:
     """Пиксельный логотип с жёсткой тенью через битовую матрицу.
 
     1 строка матрицы = половина строки терминала (глифы ▀▄█ разбираются
@@ -220,12 +220,22 @@ def _logo_block(l1: str, l2: str, c1=(0, 200, 100), c2=(120, 255, 165),
 
     rows = []
     for r in (0, 2, 4):
+        # Маска глифа в строке терминала — для правила «без мостиков».
+        has_glyph = [(grid[r][c] or grid[r + 1][c]) for c in range(gates)]
         out = Text()
         for c in range(gates):
             gt, gb = grid[r][c], grid[r + 1][c]
             st = shad[r][c] and not gt
             sb = shad[r + 1][c] and not gb
             gc = gcolor(c)
+            if not gt and not gb and (st or sb):
+                left = has_glyph[c - 1] if c > 0 else False
+                right = has_glyph[c + 1] if c + 1 < gates else False
+                if left and right:
+                    # Мостик в просвете/отверстии шириной 1: тень залила бы
+                    # промежуток между буквами — оставляем пусто.
+                    out.append(" ", style=None)
+                    continue
             if gt and gb:
                 out.append("█", style=f"bold {gc}")
             elif gt and sb:
@@ -257,7 +267,7 @@ THEMES = {
         "muted": "#96A09A", "dim": "#5B645F", "num": "#5B645F",
         "dot": "#3DDC84", "logo2": "#27A85D",
         "logo_c1": (0, 200, 100), "logo_c2": (120, 255, 165),
-        "shadow": "#2f3645",
+        "shadow": "#3a4254",
     },
     "mono": {
         "border": "#6E6E6E", "accent": "#E8E8E8",
@@ -265,7 +275,7 @@ THEMES = {
         "muted": "#8A8A8A", "dim": "#5B5B5B", "num": "#5B5B5B",
         "dot": "#E8E8E8", "logo2": "#8A8A8A",
         "logo_c1": (200, 200, 200), "logo_c2": (255, 255, 255),
-        "shadow": "#2f3645",
+        "shadow": "#3a4254",
     },
     "amber": {
         "border": "#7A5200", "accent": "#FFB000",
@@ -273,7 +283,7 @@ THEMES = {
         "muted": "#9A8A6A", "dim": "#5C5546", "num": "#5C5546",
         "dot": "#FFB000", "logo2": "#B07800",
         "logo_c1": (255, 176, 0), "logo_c2": (255, 220, 150),
-        "shadow": "#2f3645",
+        "shadow": "#3a4254",
     },
 }
 
@@ -495,7 +505,7 @@ def _header_card(state: MenuState, pal: dict, lang: str, inner: int):
                 _cut(l1, inner, am), _cut(l2, inner, am),
                 pal.get("logo_c1", (0, 200, 100)),
                 pal.get("logo_c2", (120, 255, 165)),
-                pal.get("shadow") or "#2f3645")
+                pal.get("shadow") or "#3a4254")
             t1.append_text(r1)
             t1.append("   ", style=None)
             t1.append("by SYSIK", style=white_b or None)
