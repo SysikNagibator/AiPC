@@ -118,8 +118,8 @@ AiPC даёт ИИ-агенту **настоящее управление тво
 
 ```
 npm i -g aipc-sysik   # проще всего: сам скачает бинарь под твою ОС
-# или: pip install git+https://github.com/SysikNagibator/AiPC.git
-# или: pipx install git+https://github.com/SysikNagibator/AiPC.git
+# или: pip install aipc-sysik
+# или: pipx install aipc-sysik
 aipc mcp                 # MCP-команда для IDE
 aipc install --dry-run   # предпросмотр изменений перед применением
 ```

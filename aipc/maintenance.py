@@ -283,7 +283,7 @@ def self_update(repo: str = UPDATE_REPO) -> int:
     # На macOS/Linux автоустановки нет: файл проверен, дальше руками.
     if os.name != "nt":
         print(f"Готово: {tmp}")
-        print("Распакуй/запусти вручную или обновись через: pip install -U git+https://github.com/SysikNagibator/AiPC.git")
+        print("Распакуй/запусти вручную или обновись через: pip install -U aipc-sysik")
         return 0
     try:
         subprocess.Popen([str(tmp), "--self-install"])

@@ -120,8 +120,8 @@ That is the point — and the risk.
 
 ```
 npm i -g aipc-sysik   # easiest: downloads the binary for your OS
-# or: pip install git+https://github.com/SysikNagibator/AiPC.git
-# or: pipx install git+https://github.com/SysikNagibator/AiPC.git
+# or: pip install aipc-sysik
+# or: pipx install aipc-sysik
 aipc mcp                 # MCP command for your IDE
 aipc install --dry-run   # preview IDE changes before applying
 ```
