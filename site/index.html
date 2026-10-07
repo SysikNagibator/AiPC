@@ -82,7 +82,8 @@ nav .langsw{white-space:nowrap}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:26px 0 6px}
 .stat{border:1px solid var(--line);border-radius:12px;padding:14px 8px;text-align:center;background:var(--card)}
 .stat b{font-family:var(--px);font-size:clamp(15px,3.4vw,24px);color:var(--acc);display:block;margin-bottom:6px}
-.stat span{font-size:12px;color:var(--mut)}
+.stat b .tilde{font-family:var(--mono);font-weight:700}
+.stat > span{font-size:12px;color:var(--mut)}
 @media(max-width:560px){.stats{grid-template-columns:repeat(2,1fr)}}
 
 /* --- sections --- */
@@ -204,7 +205,7 @@ footer .warn{color:var(--amber);font-size:12px;margin-top:10px}
   <div class="stats">
     <div class="stat rv"><b><span data-count="70">0</span></b><span>tools</span></div>
     <div class="stat rv"><b><span data-count="40">0</span></b><span>IDEs in matrix</span></div>
-    <div class="stat rv"><b>~<span data-count="10">0</span>x</b><span>cheaper screenshots</span></div>
+    <div class="stat rv"><b><span class="tilde">~</span><span data-count="10">0</span>X</b><span>cheaper screenshots</span></div>
     <div class="stat rv"><b>MIT</b><span>license</span></div>
   </div>
 </div>
