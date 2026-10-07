@@ -492,14 +492,21 @@ def _header_card(state: MenuState, pal: dict, lang: str, inner: int):
             t2.overflow = "crop"
         lines.append(t2)
         if not nc:
-            # строка 3: нижний край тени (копия второй строки, сдвиг -1/+1).
-            # Только в цветном режиме: без цвета тень неотличима от глифа.
+            # строка 3: нижняя кромка тени — только тики строго под глифами
+            # (клетка тени рисуется, лишь если прямо над ней глиф второй
+            # строки). Полный силуэт отдельным рядом читался бы как блоки,
+            # а не как прилегающая ступенька. Только в цветном режиме.
+            main2up = _cut(l2, inner, am)
             sh2 = _cut(l2[1:] + " ", inner, am)
             t3 = Text(no_wrap=True)
             t3.overflow = "crop"
             sh_style = pal.get("shadow") or pal["dim"]
-            for ch in sh2:
-                t3.append(ch, style=sh_style if ch != " " else None)
+            for j, ch in enumerate(sh2):
+                above = main2up[j] if j < len(main2up) else " "
+                if ch != " " and above != " ":
+                    t3.append(ch, style=sh_style)
+                else:
+                    t3.append(" ", style=None)
             tail3 = inner - _cells(t3.plain)
             if tail3 > 0:
                 t3.append(" " * tail3)
