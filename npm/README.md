@@ -1,50 +1,53 @@
 # aipc-sysik (npm)
 
-AiPC by SYSIK — локальный MCP-сервер + терминальное меню: даёт Claude и другим
-ИИ-ассистентам глаза и руки на твоём ПК. Этот npm-пакет — тонкая обёртка:
-при установке скачивает готовый бинарь под твою ОС со страницы
-[Releases](https://github.com/SysikNagibator/AiPC/releases) и кладёт команду `aipc`.
+AiPC by SYSIK — local MCP server + terminal menu: gives Claude and other
+AI assistants eyes and hands on your PC. This npm package is a thin wrapper:
+on install it downloads the prebuilt binary for your OS from
+[Releases](https://github.com/SysikNagibator/AiPC/releases) and exposes
+the `aipc` command.
+
+[Русская версия](README-RU.md)
 
 ```sh
 npm i -g aipc-sysik
-aipc            # меню (первый запуск всё настроит сам)
-aipc mcp        # MCP-команда для IDE
+aipc            # menu (first run sets everything up itself)
+aipc mcp        # MCP command for your IDE
 ```
 
-Полная документация (EN/RU), риски и матрица платформ — в
-[основном репозитории](https://github.com/SysikNagibator/AiPC#readme).
+Full documentation (EN/RU), risks and platform matrix — in the
+[main repository](https://github.com/SysikNagibator/AiPC#readme).
 
-## Как это работает
+## How it works
 
-`postinstall` (`install.js`) определяет `process.platform`/`process.arch`,
-качает нужный файл релиза `v1.1.1` (`AiPC_Win_*.exe`, `AiPC_macOS_*`,
-`AiPC_Linux_*`) в `bin/` и делает его исполняемым. Шим `bin/aipc.js`
-пробрасывает аргументы в бинарь один в один.
+`postinstall` (`install.js`) detects `process.platform`/`process.arch`,
+downloads the matching `v1.1.1` release file (`AiPC_Win_*.exe`, `AiPC_macOS_*`,
+`AiPC_Linux_*`) into `bin/` and makes it executable. The `bin/aipc.js` shim
+passes arguments through to the binary one-to-one.
 
-> Новые версии npm (11+) могут блокировать postinstall-скрипты — не страшно:
-> шим сам докачает бинарь при первом запуске `aipc`.
+> Newer npm versions (11+) may block postinstall scripts — no problem:
+> the shim downloads the binary itself on first `aipc` run.
 
-Поддерживаются: Windows x64, macOS ARM64, Linux x64. Остальным —
-`pip install git+https://github.com/SysikNagibator/AiPC.git` или бинарь
-из Releases вручную. Офлайн-установка: `AIPC_SYSIK_SKIP_DOWNLOAD=1`.
+Supported: Windows x64, macOS ARM64, Linux x64. Everyone else —
+`pip install aipc-sysik` or a binary from Releases. Offline install:
+`AIPC_SYSIK_SKIP_DOWNLOAD=1`.
 
-## Версии
+## Versions
 
-Версия npm-пакета следует за релизами AiPC (`1.1.2` = релиз `v1.1.1`).
-Карта «ОС → файл» лежит в `platforms.js` и обновляется с каждым релизом.
+The npm package version tracks AiPC releases (`1.1.3` = release `v1.1.1`).
+The OS → file map lives in `platforms.js` and is updated with each release.
 
-License: MIT. Author — SYSIK.
+## GitHub Packages mirror
 
-## Зеркало в GitHub Packages
-
-Основной реестр — npmjs (`npm i -g aipc-sysik`, без логина). Дополнительно
-каждый релиз-тег публикуется в GitHub Packages как
-`@sysiknagibator/aipc-sysik` (workflow `gh-packages.yml`, scoped-имя требует
-сам GitHub). Установка оттуда — только с авторизацией:
+The primary registry is npmjs (`npm i -g aipc-sysik`, no login needed).
+Additionally, every release tag is published to GitHub Packages as
+`@sysiknagibator/aipc-sysik` (workflow `gh-packages.yml`; GitHub itself
+requires the scoped name). Installing from there requires authentication:
 
 ```sh
 # ~/.npmrc:
 @sysiknagibator:registry=https://npm.pkg.github.com/
-//npm.pkg.github.com/:_authToken=ТУТ_PAT_С_READ_PACKAGES
+//npm.pkg.github.com/:_authToken=YOUR_PAT_WITH_READ_PACKAGES
 npm i -g @sysiknagibator/aipc-sysik
 ```
+
+License: MIT. Author — SYSIK.
