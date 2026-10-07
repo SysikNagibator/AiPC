@@ -1,0 +1,42 @@
+name: gh-packages
+
+# Зеркало npm-пакета в GitHub Packages (npmjs остаётся основным).
+# GitHub Packages принимает только scoped-имена → публикуем как
+# @sysiknagibator/aipc-sysik (имя переписывается на лету, исходники те же).
+# Токены не нужны: публикует GITHUB_TOKEN (нужен packages: write).
+# Установка оттуда требует авторизации (PAT read:packages), поэтому
+# основной путь — npmjs (`npm i -g aipc-sysik` без логина).
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish-gpr:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: npm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Rename to scope and configure registry
+        run: |
+          npm pkg set name="@sysiknagibator/aipc-sysik"
+          printf '%s\n' \
+            '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}' \
+            '@sysiknagibator:registry=https://npm.pkg.github.com/' \
+            > .npmrc
+          cat package.json | grep '"name"'
+      - name: Publish to GitHub Packages
+        run: npm publish --registry=https://npm.pkg.github.com/
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

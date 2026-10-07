@@ -34,3 +34,17 @@ aipc mcp        # MCP-команда для IDE
 Карта «ОС → файл» лежит в `platforms.js` и обновляется с каждым релизом.
 
 License: MIT. Author — SYSIK.
+
+## Зеркало в GitHub Packages
+
+Основной реестр — npmjs (`npm i -g aipc-sysik`, без логина). Дополнительно
+каждый релиз-тег публикуется в GitHub Packages как
+`@sysiknagibator/aipc-sysik` (workflow `gh-packages.yml`, scoped-имя требует
+сам GitHub). Установка оттуда — только с авторизацией:
+
+```sh
+# ~/.npmrc:
+@sysiknagibator:registry=https://npm.pkg.github.com/
+//npm.pkg.github.com/:_authToken=ТУТ_PAT_С_READ_PACKAGES
+npm i -g @sysiknagibator/aipc-sysik
+```
