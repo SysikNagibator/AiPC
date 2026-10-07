@@ -1,7 +1,7 @@
 # Поддержка платформ AiPC
 
 Статус: **Windows 10/11 полностью; macOS/Linux — базовые фичи работают**
-(`pip install aipc-sysik`), полный контроль остаётся за Windows.
+(`pip install aipc-sysik` или `npm i -g aipc-sysik`), полный контроль остаётся за Windows.
 Швы кода в `aipc/platform/` (интерфейсы `base.py`, полный
 бэкенд `win32.py`, частичный `posix.py`).
 
