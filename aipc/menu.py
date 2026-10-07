@@ -179,30 +179,73 @@ def _gradient(text: str, c1=(34, 197, 94), c2=(134, 239, 172)) -> "Text":
     return out
 
 
-def _logo_row(main: str, shadow_src: str, c1=(0, 200, 100), c2=(120, 255, 165),
-              dim_style: str = "") -> "Text":
-    """Строка пиксель-логотипа с дроп-тенью: глиф — градиент, а сдвинутая
-    копия соседней строки — тусклым (как тень в pixel-арте). Направление
-    сдвига задано самим shadow_src (вправо — " "+src, влево — src[1:]).
-    Позиции градиента совпадают с _gradient, цвета старого лого не меняются."""
+def _logo_block(l1: str, l2: str, c1=(0, 200, 100), c2=(120, 255, 165),
+                shadow: str = "#2f3645") -> tuple["Text", "Text", "Text"]:
+    """Пиксельный логотип с жёсткой тенью через битовую матрицу.
+
+    1 строка матрицы = половина строки терминала (глифы ▀▄█ разбираются
+    на верх/низ). Тень — копия матрицы, сдвинутая на 1 пиксель влево/вниз;
+    пиксель тени ставится только там, где нет глифа (глиф поверх тени).
+    Канвас с запасом: +1 колонка слева и +1 полустрока снизу, тень не режется.
+    Пары строк матрицы квантуются в ▀▄█ с явными fg+bg, чтобы тень не
+    «пропадала» в соседних половинках клетки. Градиент глифа — по колонке,
+    позиции цветов совпадают со старым _gradient один в один.
+    """
     from rich.text import Text
 
-    out = Text()
-    n = max(1, len(main) - 1)
-    for i, ch in enumerate(main):
-        sch = shadow_src[i] if i < len(shadow_src) else " "
-        if ch != " ":
-            t = i / n
-            r = int(c1[0] + (c2[0] - c1[0]) * t)
-            g = int(c1[1] + (c2[1] - c1[1]) * t)
-            b = int(c1[2] + (c2[2] - c1[2]) * t)
-            out.append(ch, style=f"bold #{r:02x}{g:02x}{b:02x}")
-        elif sch != " ":
-            # Сплошной силуэт без пропусков: основной текст всегда поверх.
-            out.append(sch, style=dim_style or None)
-        else:
-            out.append(" ", style=None)
-    return out
+    cell = {"█": (True, True), "▀": (True, False), "▄": (False, True)}
+    w = max(len(l1), len(l2))
+    src: list[list[bool]] = []
+    for s in (l1.ljust(w)[:w], l2.ljust(w)[:w]):
+        top = [cell.get(ch, (False, False))[0] for ch in s]
+        bot = [cell.get(ch, (False, False))[1] for ch in s]
+        src += [top, bot]
+    gates = w + 1
+    grid = [[False] * gates for _ in range(6)]
+    for r in range(4):
+        for c in range(w):
+            grid[r][c + 1] = src[r][c]
+    shad = [[False] * gates for _ in range(6)]
+    for r in range(5):
+        for c in range(1, gates):
+            if grid[r][c]:
+                shad[r + 1][c - 1] = True
+
+    def gcolor(c: int) -> str:
+        t = (c - 1) / max(1, w - 1)
+        r = int(c1[0] + (c2[0] - c1[0]) * t)
+        g = int(c1[1] + (c2[1] - c1[1]) * t)
+        b = int(c1[2] + (c2[2] - c1[2]) * t)
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+    rows = []
+    for r in (0, 2, 4):
+        out = Text()
+        for c in range(gates):
+            gt, gb = grid[r][c], grid[r + 1][c]
+            st = shad[r][c] and not gt
+            sb = shad[r + 1][c] and not gb
+            gc = gcolor(c)
+            if gt and gb:
+                out.append("█", style=f"bold {gc}")
+            elif gt and sb:
+                out.append("▀", style=f"bold {gc} on {shadow}")
+            elif st and gb:
+                out.append("▄", style=f"bold {gc} on {shadow}")
+            elif st and sb:
+                out.append("█", style=shadow)
+            elif gt:
+                out.append("▀", style=f"bold {gc}")
+            elif st:
+                out.append("▀", style=shadow)
+            elif gb:
+                out.append("▄", style=f"bold {gc}")
+            elif sb:
+                out.append("▄", style=shadow)
+            else:
+                out.append(" ", style=None)
+        rows.append(out)
+    return rows[0], rows[1], rows[2]
 
 # Палитры тем (hex, truecolor; rich сам даунгрейдит под 16 цветов).
 from rich.cells import cell_len
@@ -446,10 +489,14 @@ def _header_card(state: MenuState, pal: dict, lang: str, inner: int):
             t1.append(" " + ver if room_nc > _cells(left) else ver,
                       style=white_b or None)
         else:
-            # строка 1: чистый градиент (тень от неё падает вниз-влево).
-            g = _gradient(_cut(l1, inner, am), pal.get("logo_c1", (0, 200, 100)),
-                          pal.get("logo_c2", (120, 255, 165)))
-            t1.append(g)
+            # Попиксельный логотип с жёсткой тенью (битовая матрица):
+            # r1 — верх, r2 — низ глифа, r3 — нижняя кромка тени.
+            r1, r2, r3 = _logo_block(
+                _cut(l1, inner, am), _cut(l2, inner, am),
+                pal.get("logo_c1", (0, 200, 100)),
+                pal.get("logo_c2", (120, 255, 165)),
+                pal.get("shadow") or "#2f3645")
+            t1.append_text(r1)
             t1.append("   ", style=None)
             t1.append("by SYSIK", style=white_b or None)
             room = inner - _cells(ver)
@@ -468,13 +515,7 @@ def _header_card(state: MenuState, pal: dict, lang: str, inner: int):
             t2.append(_pad(_cut(f"{l2}   {slogan}", inner, am), inner),
                       style=dim or None)
         else:
-            # строка 2: глиф + жёсткая тень вниз-влево: тень — сдвинутая
-            # на 1 клетку влево копия ПЕРВОЙ строки, лежит строго под текстом.
-            main2 = _cut(l2, inner, am)
-            sh1 = _cut(l1[1:] + " ", inner, am)
-            t2.append(_logo_row(main2, sh1, pal.get("logo_c1", (0, 200, 100)),
-                                pal.get("logo_c2", (120, 255, 165)),
-                                pal.get("shadow") or pal["dim"]))
+            t2.append_text(r2)
             t2.append("   ", style=None)
             t2.append(slogan, style=muted or None)
             tail = inner - _cells(t2.plain)
@@ -485,21 +526,9 @@ def _header_card(state: MenuState, pal: dict, lang: str, inner: int):
             t2.overflow = "crop"
         lines.append(t2)
         if not nc:
-            # строка 3: нижняя кромка тени. Клетка терминала ~вдвое выше,
-            # чем шире, поэтому целый ряд вниз выглядел бы вдвое длиннее
-            # сдвига влево. Чтобы X и Y совпали по модулю, вниз тень
-            # выступает на полклетки: верхняя половина блока (▀) плоским
-            # цветом. Ступенька ровно в 1 пиксель шрифта, нигде не длиннее.
-            # Только в цветном режиме.
-            sh2 = _cut(l2[1:] + " ", inner, am)
             t3 = Text(no_wrap=True)
             t3.overflow = "crop"
-            sh_style = pal.get("shadow") or pal["dim"]
-            for ch in sh2:
-                if ch != " ":
-                    t3.append("▀", style=sh_style)
-                else:
-                    t3.append(" ", style=None)
+            t3.append_text(r3)
             tail3 = inner - _cells(t3.plain)
             if tail3 > 0:
                 t3.append(" " * tail3)
