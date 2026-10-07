@@ -138,9 +138,20 @@ pre .c{color:var(--mut)}
 
 /* --- video / downloads / faq --- */
 video{width:100%;border-radius:14px;border:1px solid var(--line);background:#000}
-.dl{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.dl .btn{justify-content:center;flex-direction:column;gap:2px}
-.dl .btn small{font-weight:400;font-size:12px;opacity:.75}
+.dl{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.os-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;
+  display:flex;flex-direction:column;gap:10px;transition:box-shadow .2s ease,transform .15s ease}
+.os-card:hover{box-shadow:0 0 28px rgba(61,220,132,.18);transform:translateY(-2px)}
+.os-card.os-hi{outline:2px solid var(--acc);outline-offset:2px}
+.os-top{display:flex;align-items:center;gap:12px}
+.os-ico{width:48px;height:48px;flex:none;border:1px solid var(--line);border-radius:12px;
+  display:inline-flex;align-items:center;justify-content:center;background:#050805}
+.os-ico svg{width:26px;height:26px;fill:var(--acc)}
+.os-ico svg.stroke{fill:none;stroke:var(--acc);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.os-name{color:var(--white);font-weight:700;font-size:16px}
+.os-file{font-size:12px;color:var(--dim);word-break:break-all}
+.os-meta{font-size:13px;color:var(--mut)}
+.os-card .btn{margin-top:6px;justify-content:center}
 @media(max-width:640px){.dl{grid-template-columns:1fr}}
 details{border:1px solid var(--line);border-radius:10px;margin-bottom:10px;background:var(--card)}
 summary{cursor:pointer;padding:12px 16px;color:var(--white);font-weight:700;font-size:14px;list-style:none}
@@ -333,9 +344,30 @@ pip install aipc-sysik</pre>
   <div class="sec-head"><span class="sec-num">05</span><h2>Download v1.1.1</h2></div>
   <p class="sec-sub">Ready builds from the releases page. Your OS is highlighted automatically.</p>
   <div class="dl">
-    <a class="btn acc" data-os="windows" href="https://github.com/SysikNagibator/AiPC/releases/download/v1.1.1/AiPC_Win_1.1.1.exe">Windows<small>.exe · 75 MB</small></a>
-    <a class="btn ghost" data-os="macos" href="https://github.com/SysikNagibator/AiPC/releases/download/v1.1.1/AiPC_macOS_1.1.1">macOS<small>Apple Silicon</small></a>
-    <a class="btn ghost" data-os="linux" href="https://github.com/SysikNagibator/AiPC/releases/download/v1.1.1/AiPC_Linux_1.1.1">Linux<small>x64 · 95 MB</small></a>
+    <div class="os-card" data-os="windows">
+      <div class="os-top">
+        <span class="os-ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8.5" height="8.5" rx="1"/><rect x="12.5" y="3" width="8.5" height="8.5" rx="1"/><rect x="3" y="12.5" width="8.5" height="8.5" rx="1"/><rect x="12.5" y="12.5" width="8.5" height="8.5" rx="1"/></svg></span>
+        <div><div class="os-name">Windows</div><div class="os-file">AiPC_Win_1.1.1.exe · 75 MB</div></div>
+      </div>
+      <div class="os-meta">Run it — first launch sets everything up itself.</div>
+      <a class="btn acc" href="https://github.com/SysikNagibator/AiPC/releases/download/v1.1.1/AiPC_Win_1.1.1.exe">Download</a>
+    </div>
+    <div class="os-card" data-os="macos">
+      <div class="os-top">
+        <span class="os-ico"><svg viewBox="0 0 24 24"><path d="M16.36 12.76c0-2.3 1.88-3.4 1.97-3.46-1.08-1.57-2.75-1.79-3.34-1.81-1.42-.14-2.77.83-3.49.83-.72 0-1.83-.8-3.02-.78-1.55.02-2.98.9-3.78 2.28-1.61 2.8-.41 6.95 1.16 9.22.77 1.11 1.68 2.36 2.88 2.31 1.16-.05 1.6-.75 3-.75s1.79.72 3.02.7c1.25-.02 2.04-1.13 2.8-2.25.88-1.29 1.24-2.54 1.26-2.6-.03-.01-2.42-.93-2.45-3.69zM14.16 5.4c.63-.76 1.05-1.82.93-2.87-.9.04-1.99.6-2.64 1.36-.58.67-1.09 1.75-.95 2.78 1 .08 2.03-.51 2.66-1.27z"/></svg></span>
+        <div><div class="os-name">macOS</div><div class="os-file">AiPC_macOS_1.1.1 · Apple Silicon</div></div>
+      </div>
+      <div class="os-meta">Grant Accessibility + Screen Recording when asked.</div>
+      <a class="btn ghost" href="https://github.com/SysikNagibator/AiPC/releases/download/v1.1.1/AiPC_macOS_1.1.1">Download</a>
+    </div>
+    <div class="os-card" data-os="linux">
+      <div class="os-top">
+        <span class="os-ico"><svg class="stroke" viewBox="0 0 24 24"><path d="M4 17l6-6-6-6M12 19h8"/></svg></span>
+        <div><div class="os-name">Linux</div><div class="os-file">AiPC_Linux_1.1.1 · x64 · 95 MB</div></div>
+      </div>
+      <div class="os-meta">X11 session works best, then <code>chmod +x</code>.</div>
+      <a class="btn ghost" href="https://github.com/SysikNagibator/AiPC/releases/download/v1.1.1/AiPC_Linux_1.1.1">Download</a>
+    </div>
   </div>
 </section>
 
@@ -442,7 +474,7 @@ document.querySelectorAll('pre').forEach(function(block){
   var p = (navigator.platform || '').toLowerCase(), ua = (navigator.userAgent || '').toLowerCase();
   var os = /win/.test(p) ? 'windows' : (/mac/.test(p) ? 'macos' : (/linux/.test(ua) || /linux/.test(p) ? 'linux' : null));
   if(!os) return;
-  document.querySelectorAll('.dl .btn').forEach(function(b){
+  document.querySelectorAll('.os-card').forEach(function(b){
     if(b.dataset.os === os) b.classList.add('os-hi');
   });
 })();
