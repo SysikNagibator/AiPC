@@ -1,6 +1,15 @@
 # Changelog AiPC от SYSIK
 
-Формат версий: текущая `1.1`; найденные баги чинятся хотфиксами `1.1.x` поверх неё.
+Формат версий: текущая `1.1.1` (хотфикс поверх `1.1`).
+
+## [1.1.1] — 2026-10-07
+
+Хотфикс поверх `1.1`:
+- npm-пакет `aipc-sysik` (`npm i -g aipc-sysik`): скачивает бинарь под ОС из Releases, шим с самодокачкой при блокировке postinstall.
+- Установка macOS/Linux через `pip install git+https://...` (пакета `aipc-sysik` на PyPI пока нет); workflow публикации на PyPI готов (нужен Trusted Publishing).
+- Видеообзоры RU/EN в README/RU (`assets/AiPC_promo*.mp4` + GitHub-плееры).
+- Дроп-тень пиксельного логотипа меню (битовая матрица, `#3a4254`, сдвиг -1/+1) + `assets/menu_preview.svg`; равномерные просветы букв.
+- CI: зелёный на Windows/macOS/Linux (изоляция XDG, UTF-8 вывод тулз, icns для macOS-сборки).
 
 ## [Unreleased]
 

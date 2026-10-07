@@ -15,7 +15,7 @@ Zed, Cline, OpenCode, Gemini CLI, Codex CLI и ещё 30+ — полная та�
 {
   "mcpServers": {
     "aipc": {
-      "command": "C:\\Program Files\\AiPC\\AiPC_Win_1.1.exe",
+      "command": "C:\\Program Files\\AiPC\\AiPC_Win_1.1.1.exe",
       "args": ["mcp"]
     }
   }
@@ -28,7 +28,7 @@ Zed, Cline, OpenCode, Gemini CLI, Codex CLI и ещё 30+ — полная та�
 {
   "mcpServers": {
     "aipc": {
-      "command": "C:\\path\\to\\AiPC_Win_1.1.exe",
+      "command": "C:\\path\\to\\AiPC_Win_1.1.1.exe",
       "args": ["mcp"]
     }
   }

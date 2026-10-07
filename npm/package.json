@@ -1,6 +1,6 @@
 {
   "name": "aipc-sysik",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "AiPC by SYSIK — full agent access to the PC (MCP + CLI). Installs the prebuilt binary for your OS.",
   "license": "MIT",
   "repository": {

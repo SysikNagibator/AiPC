@@ -6,10 +6,11 @@ name: pypi
 #   owner SysikNagibator, project aipc-sysik, workflow pypi.yml.
 # Токены не нужны. Версия берётся из pyproject.toml (совпадает с тегом).
 
+# ВРЕМЕННО: автозапуск по тегу отключён, пока не настроен Trusted Publishing
+# на pypi.org (иначе каждый тег = красный билд). Вернуть `push: tags: v*`,
+# когда будешь готов. Ручной запуск: Actions → pypi → Run workflow.
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: read

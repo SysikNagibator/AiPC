@@ -107,7 +107,7 @@ AiPC даёт ИИ-агенту **настоящее управление тво
 
 ## Быстрый старт
 
-**Windows:** скачайте **`AiPC_Win_1.1.exe`** из [Releases](https://github.com/SysikNagibator/AiPC/releases) и запустите двойным щелчком.
+**Windows:** скачайте **`AiPC_Win_1.1.1.exe`** из [Releases](https://github.com/SysikNagibator/AiPC/releases) и запустите двойным щелчком.
 
 | Шаг | Что делать |
 |------|------------|
@@ -239,7 +239,7 @@ AiPC регистрирует себя при каждом запуске мен
 {
   "mcpServers": {
     "aipc": {
-      "command": "C:\\Program Files\\AiPC\\AiPC_Win_1.1.exe",
+      "command": "C:\\Program Files\\AiPC\\AiPC_Win_1.1.1.exe",
       "args": ["mcp"]
     }
   }
@@ -321,7 +321,7 @@ Replit…) не могут достучаться до `127.0.0.1` — см. р�
 | Команда `aipc` неизвестна | Откройте **новый** cmd (PATH применяется к новым оболочкам); переустановите через `dist\aipc.exe` |
 | Правая стенка меню съезжает | Обновитесь: с 1.0.4.4 кадры рендерятся только через `rich.Panel` фиксированной ширины |
 | Вкладки Chrome не видны | Меню → Настройка → Браузер (добавляет `--remote-debugging-port=9222`), перезапустите Chrome |
-| Старая версия в Program Files | `aipc doctor` подскажет; запустите свежий `dist\AiPC_Win_1.1.exe` → UAC → обновлено |
+| Старая версия в Program Files | `aipc doctor` подскажет; запустите свежий `dist\AiPC_Win_1.1.1.exe` → UAC → обновлено |
 | MCP нет в IDE | Выполните `aipc install --list-ides`, затем `aipc install --ide cursor` (или `--all`); предпросмотр — `--dry-run` |
 | Удалить AiPC | `aipc uninstall` (убирает наши MCP-записи, PATH, копию в Program Files; `--yes` для скриптов) |
 | GitHub страница/API 404 или rate-limit | Подождите минуту и повторите; проверьте скоупы токена и прокси; если не проходит — откройте issue с меткой времени |
@@ -356,7 +356,7 @@ python -m aipc selftest
 tools\build_exe.bat
 ```
 
-Выход: `dist\AiPC_Win_1.1.exe` (~36 МБ, иконка + publisher version-info) и `dist\AiPC-Setup.exe`.
+Выход: `dist\AiPC_Win_1.1.1.exe` (~36 МБ, иконка + publisher version-info) и `dist\AiPC-Setup.exe`.
 Подпись, убирающая синий SmartScreen: см. [docs/SIGNING.md](docs/SIGNING.md) (нужен
 сертификат code-signing: Certum Open Source ~€25/год — самый дешёвый старт).
 

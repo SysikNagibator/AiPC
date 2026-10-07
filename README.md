@@ -109,7 +109,7 @@ That is the point — and the risk.
 
 ## Quick start
 
-**Windows:** download **`AiPC_Win_1.1.exe`** from [Releases](https://github.com/SysikNagibator/AiPC/releases) and double-click it.
+**Windows:** download **`AiPC_Win_1.1.1.exe`** from [Releases](https://github.com/SysikNagibator/AiPC/releases) and double-click it.
 
 | Step | What to do |
 |------|------------|
@@ -240,7 +240,7 @@ Manual reference format:
 {
   "mcpServers": {
     "aipc": {
-      "command": "C:\\Program Files\\AiPC\\AiPC_Win_1.1.exe",
+      "command": "C:\\Program Files\\AiPC\\AiPC_Win_1.1.1.exe",
       "args": ["mcp"]
     }
   }
@@ -322,7 +322,7 @@ Full version: [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md).
 | `aipc` command unknown | Open a **new** cmd (PATH applies to new shells); reinstall via `dist\aipc.exe` |
 | Right wall of the menu drifts | Update: frames render only via fixed-width `rich.Panel` since 1.0.4.4 |
 | Chrome tabs invisible | Menu → Setup → Browser (adds `--remote-debugging-port=9222`), restart Chrome |
-| Old version in Program Files | `aipc doctor` tells you; run fresh `dist\AiPC_Win_1.1.exe` → UAC → updated |
+| Old version in Program Files | `aipc doctor` tells you; run fresh `dist\AiPC_Win_1.1.1.exe` → UAC → updated |
 | MCP not in IDE | Run `aipc install --list-ides`, then `aipc install --ide cursor` (or `--all`); preview with `--dry-run` |
 | Remove AiPC | `aipc uninstall` (removes our MCP entries, PATH, Program Files copy; `--yes` for scripts) |
 | GitHub page/API 404s or rate-limits | Wait a minute and retry; check your token scopes and proxy; if the outage persists, open an issue with the timestamp |
@@ -357,7 +357,7 @@ python -m aipc selftest
 tools\build_exe.bat
 ```
 
-Output: `dist\AiPC_Win_1.1.exe` (~36 MB, icon + publisher version-info) and `dist\AiPC-Setup.exe`.
+Output: `dist\AiPC_Win_1.1.1.exe` (~36 MB, icon + publisher version-info) and `dist\AiPC-Setup.exe`.
 Signing away the blue SmartScreen: see [docs/SIGNING.md](docs/SIGNING.md) (needs
 a code-signing certificate: Certum Open Source ~€25/yr is the cheapest start).
 
