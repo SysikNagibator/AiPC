@@ -119,7 +119,9 @@ That is the point — and the risk.
 **macOS / Linux:** binaries come from the same [Releases](https://github.com/SysikNagibator/AiPC/releases) page (`AiPC_macOS_*`, `AiPC_Linux_*`), or install from source:
 
 ```
-pip install git+https://github.com/SysikNagibator/AiPC.git   # or: pipx install git+https://github.com/SysikNagibator/AiPC.git
+npm i -g aipc-sysik   # easiest: downloads the binary for your OS
+# or: pip install git+https://github.com/SysikNagibator/AiPC.git
+# or: pipx install git+https://github.com/SysikNagibator/AiPC.git
 aipc mcp                 # MCP command for your IDE
 aipc install --dry-run   # preview IDE changes before applying
 ```

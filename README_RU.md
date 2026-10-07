@@ -117,7 +117,9 @@ AiPC даёт ИИ-агенту **настоящее управление тво
 **macOS / Linux:** бинарники на той же странице [Releases](https://github.com/SysikNagibator/AiPC/releases) (`AiPC_macOS_*`, `AiPC_Linux_*`), либо установка из исходников:
 
 ```
-pip install git+https://github.com/SysikNagibator/AiPC.git   # или: pipx install git+https://github.com/SysikNagibator/AiPC.git
+npm i -g aipc-sysik   # проще всего: сам скачает бинарь под твою ОС
+# или: pip install git+https://github.com/SysikNagibator/AiPC.git
+# или: pipx install git+https://github.com/SysikNagibator/AiPC.git
 aipc mcp                 # MCP-команда для IDE
 aipc install --dry-run   # предпросмотр изменений перед применением
 ```
