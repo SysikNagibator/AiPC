@@ -15,10 +15,11 @@
   <img src="https://img.shields.io/badge/python-3.10%2B-green" alt="python">
   <img src="https://img.shields.io/badge/tools-70-brightgreen" alt="tools">
   <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="license">
+  <a href="https://aipc.sysik.mom/ru/"><img src="https://img.shields.io/badge/сайт-aipc.sysik.mom-3DDC84" alt="сайт"></a>
 </p>
 
 <p align="center">
-  <b>EN README: <a href="README.md">English version</a></b> · Скиллы: <a href="SKILL_RU.md">SKILL.md</a> · IDE матриции: <a href="docs/IDES_RU.md">docs/IDES.md</a>
+  <b>🌐 Сайт: <a href="https://aipc.sysik.mom/ru/">aipc.sysik.mom</a></b> · EN README: <a href="README.md">English version</a> · Скиллы: <a href="SKILL_RU.md">SKILL.md</a> · IDE матриции: <a href="docs/IDES_RU.md">docs/IDES.md</a>
 </p>
 
 <div align="center">

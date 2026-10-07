@@ -17,10 +17,11 @@
   <img src="https://img.shields.io/badge/python-3.10%2B-green" alt="python">
   <img src="https://img.shields.io/badge/tools-70-brightgreen" alt="tools">
   <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="license">
+  <a href="https://aipc.sysik.mom"><img src="https://img.shields.io/badge/website-aipc.sysik.mom-3DDC84" alt="website"></a>
 </p>
 
 <p align="center">
-  <b>RU README: <a href="README_RU.md">Russian version</a></b> · Skills: <a href="SKILL.md">SKILL.md</a> · IDE matrix: <a href="docs/IDES.md">docs/IDES.md</a>
+  <b>🌐 Site: <a href="https://aipc.sysik.mom">aipc.sysik.mom</a></b> · RU README: <a href="README_RU.md">Russian version</a> · Skills: <a href="SKILL.md">SKILL.md</a> · IDE matrix: <a href="docs/IDES.md">docs/IDES.md</a>
 </p>
 
 <div align="center">
