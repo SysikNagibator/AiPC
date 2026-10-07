@@ -178,6 +178,30 @@ def _gradient(text: str, c1=(34, 197, 94), c2=(134, 239, 172)) -> "Text":
         out.append(ch, style=f"bold #{r:02x}{g:02x}{b:02x}")
     return out
 
+
+def _logo_row(main: str, shadow_src: str, c1=(0, 200, 100), c2=(120, 255, 165),
+              dim_style: str = "") -> "Text":
+    """Строка пиксель-логотипа с дроп-тенью: глиф — градиент, а сдвинутая
+    на 1 клетку вправо копия верхней строки — тусклым (как тень в pixel-арте).
+    Позиции градиента совпадают с _gradient, цвета старого лого не меняются."""
+    from rich.text import Text
+
+    out = Text()
+    n = max(1, len(main) - 1)
+    for i, ch in enumerate(main):
+        sch = shadow_src[i] if i < len(shadow_src) else " "
+        if ch != " ":
+            t = i / n
+            r = int(c1[0] + (c2[0] - c1[0]) * t)
+            g = int(c1[1] + (c2[1] - c1[1]) * t)
+            b = int(c1[2] + (c2[2] - c1[2]) * t)
+            out.append(ch, style=f"bold #{r:02x}{g:02x}{b:02x}")
+        elif sch != " ":
+            out.append(sch, style=dim_style or None)
+        else:
+            out.append(" ", style=None)
+    return out
+
 # Палитры тем (hex, truecolor; rich сам даунгрейдит под 16 цветов).
 from rich.cells import cell_len
 
@@ -438,9 +462,10 @@ def _header_card(state: MenuState, pal: dict, lang: str, inner: int):
             t2.append(_pad(_cut(f"{l2}   {slogan}", inner, am), inner),
                       style=dim or None)
         else:
-            g2 = _gradient(_cut(l2, inner, am), pal.get("logo_c1", (0, 200, 100)),
-                           pal.get("logo_c2", (120, 255, 165)))
-            t2.append(g2)
+            main2 = _cut(l2, inner, am)
+            sh1 = _cut(" " + l1, inner, am)
+            t2.append(_logo_row(main2, sh1, pal.get("logo_c1", (0, 200, 100)),
+                                pal.get("logo_c2", (120, 255, 165)), pal["dim"]))
             t2.append("   ", style=None)
             t2.append(slogan, style=muted or None)
             tail = inner - _cells(t2.plain)
@@ -450,6 +475,21 @@ def _header_card(state: MenuState, pal: dict, lang: str, inner: int):
             t2 = Text(_cut(t2.plain, inner, am), no_wrap=True)
             t2.overflow = "crop"
         lines.append(t2)
+        if not nc:
+            # строка 3: дроп-тень второй строки логотипа (сдвиг +1 вправо).
+            # Только в цветном режиме: без цвета тень неотличима от глифа.
+            sh2 = _cut(" " + l2, inner, am)
+            t3 = Text(no_wrap=True)
+            t3.overflow = "crop"
+            for ch in sh2:
+                t3.append(ch, style=pal["dim"] if ch != " " else None)
+            tail3 = inner - _cells(t3.plain)
+            if tail3 > 0:
+                t3.append(" " * tail3)
+            if _cells(t3.plain) > inner:
+                t3 = Text(_cut(t3.plain, inner, am), no_wrap=True)
+                t3.overflow = "crop"
+            lines.append(t3)
     # строка статуса
     dot = _glyph(state, "●", "*") if state.core_running else _glyph(state, "○", "o")
     word = _t("core.running", lang=lang) if state.core_running else _t("core.stopped", lang=lang)
