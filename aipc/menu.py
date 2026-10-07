@@ -198,15 +198,8 @@ def _logo_row(main: str, shadow_src: str, c1=(0, 200, 100), c2=(120, 255, 165),
             b = int(c1[2] + (c2[2] - c1[2]) * t)
             out.append(ch, style=f"bold #{r:02x}{g:02x}{b:02x}")
         elif sch != " ":
-            left = main[i - 1] != " " if i > 0 else False
-            right = main[i + 1] != " " if i + 1 < len(main) else False
-            if left and right:
-                # Мостик в просвете шириной 1: тень залила бы промежуток
-                # между буквами — оставляем пусто. Видна только тонкая
-                # кромка по краям букв, отверстия не закрашиваются.
-                out.append(" ", style=None)
-            else:
-                out.append(sch, style=dim_style or None)
+            # Сплошной силуэт без пропусков: основной текст всегда поверх.
+            out.append(sch, style=dim_style or None)
         else:
             out.append(" ", style=None)
     return out
@@ -221,7 +214,7 @@ THEMES = {
         "muted": "#96A09A", "dim": "#5B645F", "num": "#5B645F",
         "dot": "#3DDC84", "logo2": "#27A85D",
         "logo_c1": (0, 200, 100), "logo_c2": (120, 255, 165),
-        "shadow": "#3A4552",
+        "shadow": "#2f3645",
     },
     "mono": {
         "border": "#6E6E6E", "accent": "#E8E8E8",
@@ -229,7 +222,7 @@ THEMES = {
         "muted": "#8A8A8A", "dim": "#5B5B5B", "num": "#5B5B5B",
         "dot": "#E8E8E8", "logo2": "#8A8A8A",
         "logo_c1": (200, 200, 200), "logo_c2": (255, 255, 255),
-        "shadow": "#3A3F46",
+        "shadow": "#2f3645",
     },
     "amber": {
         "border": "#7A5200", "accent": "#FFB000",
@@ -237,7 +230,7 @@ THEMES = {
         "muted": "#9A8A6A", "dim": "#5C5546", "num": "#5C5546",
         "dot": "#FFB000", "logo2": "#B07800",
         "logo_c1": (255, 176, 0), "logo_c2": (255, 220, 150),
-        "shadow": "#453D31",
+        "shadow": "#2f3645",
     },
 }
 
@@ -492,21 +485,14 @@ def _header_card(state: MenuState, pal: dict, lang: str, inner: int):
             t2.overflow = "crop"
         lines.append(t2)
         if not nc:
-            # строка 3: нижняя кромка тени — только тики строго под глифами
-            # (клетка тени рисуется, лишь если прямо над ней глиф второй
-            # строки). Полный силуэт отдельным рядом читался бы как блоки,
-            # а не как прилегающая ступенька. Только в цветном режиме.
-            main2up = _cut(l2, inner, am)
+            # строка 3: сплошной силуэт тени (копия второй строки, сдвиг
+            # -1/+1), плоский цвет. Только в цветном режиме.
             sh2 = _cut(l2[1:] + " ", inner, am)
             t3 = Text(no_wrap=True)
             t3.overflow = "crop"
             sh_style = pal.get("shadow") or pal["dim"]
-            for j, ch in enumerate(sh2):
-                above = main2up[j] if j < len(main2up) else " "
-                if ch != " " and above != " ":
-                    t3.append(ch, style=sh_style)
-                else:
-                    t3.append(" ", style=None)
+            for ch in sh2:
+                t3.append(ch, style=sh_style if ch != " " else None)
             tail3 = inner - _cells(t3.plain)
             if tail3 > 0:
                 t3.append(" " * tail3)
