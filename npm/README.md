@@ -21,6 +21,9 @@ aipc mcp        # MCP-команда для IDE
 `AiPC_Linux_*`) в `bin/` и делает его исполняемым. Шим `bin/aipc.js`
 пробрасывает аргументы в бинарь один в один.
 
+> Новые версии npm (11+) могут блокировать postinstall-скрипты — не страшно:
+> шим сам докачает бинарь при первом запуске `aipc`.
+
 Поддерживаются: Windows x64, macOS ARM64, Linux x64. Остальным —
 `pip install git+https://github.com/SysikNagibator/AiPC.git` или бинарь
 из Releases вручную. Офлайн-установка: `AIPC_SYSIK_SKIP_DOWNLOAD=1`.

@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 "use strict";
-// Шим команды `aipc`: запускает бинарь, скачанный postinstall.
+// Шим команды `aipc`: запускает бинарь из Releases.
+// Если postinstall был заблокирован менеджером пакетов — докачиваем при
+// первом запуске сами (обычный node-код, политики install-скриптов не касаются).
 const fs = require("fs");
-const path = require("path");
 const { spawnSync } = require("child_process");
 
 const { assetName } = require("../platforms");
+const { binaryPath, downloadBinary } = require("../download");
 
-function main() {
+async function main() {
   const name = assetName();
   if (!name) {
     console.error(
@@ -16,16 +18,28 @@ function main() {
     );
     process.exit(1);
   }
-  const bin = path.join(__dirname, name);
-  if (!fs.existsSync(bin)) {
-    console.error(
-      `aipc: binary not found at ${bin}. Reinstall the package ` +
-      "(postinstall downloads it from GitHub Releases)."
-    );
-    process.exit(1);
+  let bin = binaryPath();
+  if (!bin || !fs.existsSync(bin)) {
+    if (process.env.AIPC_SYSIK_SKIP_DOWNLOAD) {
+      console.error(
+        `aipc: binary not found and download skipped (AIPC_SYSIK_SKIP_DOWNLOAD). ` +
+        "Reinstall the package without the flag."
+      );
+      process.exit(1);
+    }
+    console.error("aipc: first run — downloading the binary (~60-95 MB), one moment ...");
+    try {
+      bin = await downloadBinary();
+    } catch (e) {
+      console.error(`aipc: download failed: ${e.message || e}`);
+      process.exit(1);
+    }
   }
   const r = spawnSync(bin, process.argv.slice(2), { stdio: "inherit" });
   process.exit(r.status === null || r.status === undefined ? 1 : r.status);
 }
 
-main();
+main().catch((e) => {
+  console.error(e.message || e);
+  process.exit(1);
+});
