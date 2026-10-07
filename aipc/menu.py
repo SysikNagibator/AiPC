@@ -485,14 +485,21 @@ def _header_card(state: MenuState, pal: dict, lang: str, inner: int):
             t2.overflow = "crop"
         lines.append(t2)
         if not nc:
-            # строка 3: сплошной силуэт тени (копия второй строки, сдвиг
-            # -1/+1), плоский цвет. Только в цветном режиме.
+            # строка 3: нижняя кромка тени. Клетка терминала ~вдвое выше,
+            # чем шире, поэтому целый ряд вниз выглядел бы вдвое длиннее
+            # сдвига влево. Чтобы X и Y совпали по модулю, вниз тень
+            # выступает на полклетки: верхняя половина блока (▀) плоским
+            # цветом. Ступенька ровно в 1 пиксель шрифта, нигде не длиннее.
+            # Только в цветном режиме.
             sh2 = _cut(l2[1:] + " ", inner, am)
             t3 = Text(no_wrap=True)
             t3.overflow = "crop"
             sh_style = pal.get("shadow") or pal["dim"]
             for ch in sh2:
-                t3.append(ch, style=sh_style if ch != " " else None)
+                if ch != " ":
+                    t3.append("▀", style=sh_style)
+                else:
+                    t3.append(" ", style=None)
             tail3 = inner - _cells(t3.plain)
             if tail3 > 0:
                 t3.append(" " * tail3)
