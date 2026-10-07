@@ -1,7 +1,7 @@
 # AiPC Platform Support
 
 Status: **Windows 10/11 full; macOS/Linux — core features work**
-(`pip install aipc-sysik`), full control stays Windows-first.
+(`pip install aipc-sysik` or `npm i -g aipc-sysik`), full control stays Windows-first.
 Code seams live in `aipc/platform/`
 (`base.py` interfaces, `win32.py` full backend, `posix.py` partial).
 
